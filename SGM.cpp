@@ -1027,6 +1027,7 @@ for(int y = winRadius; y < HEIGHT - winRadius; y++){
 		for(int x = winRadius; x < WIDTH - winRadius; x++){
 
 			for(int w = 0; w < DISP_RANGE ; w++){
+			//for(int d_st = 0; d < DISP_RANGE; d++){ //use disp. range from stereo //STEREO_FLOW
 				
 				for(int neiY = y - winRadius ; neiY <= y + winRadius; neiY++){				
 					for(int neiX = x - winRadius; neiX <= x + winRadius; neiX++){
@@ -1037,16 +1038,20 @@ for(int y = winRadius; y < HEIGHT - winRadius; y++){
 						
 
 						float L = sqrt(distx*distx + disty*disty);
-						float d = L * ((float)Vmax*(float)w/DISP_RANGE)/(1.0-((float)Vmax*(float)w/DISP_RANGE));										
+						//float w = d_st*computeAlpha(neix,neiy,alpha); //STEREO_FLOW
+						float d = L * ((float)Vmax*(float)w/DISP_RANGE)/(1.0-((float)Vmax*(float)w/DISP_RANGE));
+						
 						
 						int xx = round(newx + d*translationLeft.at<Vec2f>(newy,newx)[0]);
 						int yy = round(newy + d*translationLeft.at<Vec2f>(newy,newx)[1]);
-				
+
+						//if(inScope(neiX + d_st,neiY))				       //STEREO_FLOW
+						//	cost.at<...>(y,x)[d_st] += STEREO_COST(neiX,neiY,d_st) //STEREO_FLOW
+
 						if((xx>=winRadius) && (yy>=winRadius) && xx<(WIDTH-winRadius) && yy< (HEIGHT-winRadius)){	
 							
 							cost.at<SGM::VecDf>(y,x)[w] += fabs(derivativeFlowLeftLast.at<float>(neiY,neiX) - derivativeFlowLeft.at<float>(yy,xx))						
 							+ (float)CENSUS_W * computeHammingDist(censusImageLeftLast.at<uchar>(neiY, neiX), censusImageLeft.at<uchar>(yy, xx));
-							
 										
 						}else{
 							disFlag.at<uchar>(y,x)=static_cast<uchar>(DISFLAG);

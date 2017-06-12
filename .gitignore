@@ -37,5 +37,6 @@
 # build folder
 build/*
 
-# vim swap files
+# editor swap files
 *.swp
+*~

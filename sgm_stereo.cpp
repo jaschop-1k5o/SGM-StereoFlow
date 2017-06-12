@@ -45,7 +45,7 @@ int main(int argc, char *argv[]){
 	sgmstereo.writeDerivative();
 #endif
 
-#ifdef FLOW || STEREOFLOW
+#if defined FLOW || defined STEREOFLOW
 //-- precomputation for flow analysis
 
 	std::cout<<"HEIGHT: "<<imageLeft.rows<<std::endl;

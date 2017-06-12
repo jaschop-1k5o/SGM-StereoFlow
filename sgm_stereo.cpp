@@ -6,11 +6,14 @@
 #include "opencv2/stitching/detail/matchers.hpp"
 #include <vector>
 
+//-- macros: STEREO|FLOW|STEREOFLOW|DRAWEPIPOLES
+#define STEREOFLOW
+
 void computeEpipoles(std::vector<cv::Vec3f> &lines, cv::Mat &x_sol);
 
 int main(int argc, char *argv[]){
 
-
+//-- Read input images
 	cv::Mat imageLeft, imageRight, imageLeftLast;
 	cv::Mat grayLeft, grayRight, grayLeftLast;
 	grayLeft=cv::imread("/home/johann/TUM/17S/Seminar-HWSWCodesign/KITTI/training/image_0/000003_11.png",CV_LOAD_IMAGE_GRAYSCALE);
@@ -21,25 +24,29 @@ int main(int argc, char *argv[]){
 	//cv::cvtColor(imageLeft,grayLeft,CV_BGR2GRAY);
 	//cv::cvtColor(imageRight,grayRight,CV_BGR2GRAY);
 	//cv::cvtColor(imageLeftLast,grayLeftLast,CV_BGR2GRAY);
+#ifdef DRAWEPIPOLES
+//-- colors for image drawing
 	const Scalar colorBlue(225.0, 0.0, 0.0, 0.0);
 	const Scalar colorRed(0.0, 0.0, 225.0, 0.0);
 	const Scalar colorOrange(0.0, 69.0, 225.0, 0.0);
 	const Scalar colorYellow(0.0, 255.0, 225.0, 0.0);
-
+#endif
+//-- Declare computation constants
 	const int PENALTY1 = 400; //400 stereo
 	const int PENALTY2 = 6000; //6600 stereo
 	const int winRadius = 2;  //2 stereo
-//-- Compute the stereo part
-/*	cv::Mat disparity(grayLeft.rows, grayLeft.cols, CV_8UC1);
+#ifdef STEREO
+//-- Compute the stereo disparity
+	cv::Mat disparity(grayLeft.rows, grayLeft.cols, CV_8UC1);
 	SGMStereo sgmstereo(grayLeftLast, grayLeft, grayRight, PENALTY1, PENALTY2, winRadius);
 	sgmstereo.runSGM(disparity);
 	imwrite("../disparity.jpg", disparity);
 	imshow("disparity", disparity);
 	sgmstereo.writeDerivative();
-*/
+#endif
 
-
-//-- compute the flow part
+#ifdef FLOW || STEREOFLOW
+//-- precomputation for flow analysis
 
 	std::cout<<"HEIGHT: "<<imageLeft.rows<<std::endl;
 	std::cout<<"WIDTH: "<<imageLeft.cols<<std::endl;
@@ -131,6 +138,7 @@ int main(int argc, char *argv[]){
 	computeEpipoles(lines_2, Epipole_2);
 	std::cout<<"Epipole_2: "<<Epipole_2<<std::endl;
 
+#ifdef DRAWEPIPOLES
 //-- draw epipolar lines on image 	
 	des_points_2.push_back(cv::Point2f(Epipole_2.at<float>(0), Epipole_2.at<float>(1)));
 	des_points_1.push_back(cv::Point2f(Epipole_1.at<float>(0), Epipole_1.at<float>(1)));
@@ -142,8 +150,11 @@ int main(int argc, char *argv[]){
 		cv::circle(imageLeftLast, new_keypoints_1[i],10,colorRed,1);
 		cv::circle(imageLeft, new_keypoints_2[i],10,colorBlue,1);	
 	}
+#endif
+#endif
 
-
+#ifdef FLOW
+//-- Compute the flow disparity
 	cv::Mat disparityFlow_(grayLeft.rows, grayLeft.cols, CV_8UC1);
 	SGMFlow sgmflow(grayLeftLast, grayLeft, grayRight, PENALTY1, PENALTY2, winRadius, Epipole_1, Epipole_2, Fmat);
 	sgmflow.runSGM(disparityFlow_);
@@ -154,10 +165,14 @@ int main(int argc, char *argv[]){
 	imwrite("../disparityFlow.jpg", disparityFlow_);
 	imwrite("../aviFlowFlag.jpg", disFlowFlag);
 	sgmflow.writeDerivative();
+#endif
 
-
-//-- compute the stereoflow part
-/*	cv::Mat disparityStereo, disparityFlow;
+#ifdef STEREOFLOW
+//-- Compute the stereoflow disparity
+	cv::Mat disparityStereo, disparityFlow;
+#ifndef FLOW
+	 cv::Mat disFlowFlag;
+#endif
 	disparityFlow=cv::imread("/home/sanyu/spsstereo/sanyu_local/sgm_lib/results/flow/Flow106_8paths_40D_wo.jpg",CV_LOAD_IMAGE_GRAYSCALE );
 	disparityStereo=cv::imread("/home/sanyu/spsstereo/sanyu_local/sgm_lib/results/stereo/disparity106_8paths_80D_wo.jpg",CV_LOAD_IMAGE_GRAYSCALE );
 	disFlowFlag=cv::imread("/home/sanyu/spsstereo/sanyu_local/sgm_lib/results/flow/aviFlowFlag106.jpg",CV_LOAD_IMAGE_GRAYSCALE );	
@@ -174,7 +189,7 @@ int main(int argc, char *argv[]){
 	
 	imshow("disparityStereoFlow",disparityStereoFlow);
 	imwrite("../disparityStereoFlow.jpg",disparityStereoFlow);
-*/
+#endif
 	waitKey(0);
 	
 	return 0;

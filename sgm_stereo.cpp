@@ -35,6 +35,7 @@ int main(int argc, char *argv[]){
 	const int PENALTY1 = 400; //400 stereo
 	const int PENALTY2 = 6000; //6600 stereo
 	const int winRadius = 2;  //2 stereo
+
 #ifdef STEREO
 //-- Compute the stereo disparity
 	cv::Mat disparity(grayLeft.rows, grayLeft.cols, CV_8UC1);
@@ -171,7 +172,7 @@ int main(int argc, char *argv[]){
 //-- Compute the stereoflow disparity
 	cv::Mat disparityStereo, disparityFlow;
 #ifndef FLOW
-	 cv::Mat disFlowFlag;
+	cv::Mat disFlowFlag;
 #endif
 	disparityFlow=cv::imread("/home/sanyu/spsstereo/sanyu_local/sgm_lib/results/flow/Flow106_8paths_40D_wo.jpg",CV_LOAD_IMAGE_GRAYSCALE );
 	disparityStereo=cv::imread("/home/sanyu/spsstereo/sanyu_local/sgm_lib/results/stereo/disparity106_8paths_80D_wo.jpg",CV_LOAD_IMAGE_GRAYSCALE );

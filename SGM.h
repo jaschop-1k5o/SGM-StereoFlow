@@ -128,7 +128,7 @@ class SGMStereoFlow : public SGM
 		cv::Vec3f ransacAlpha;
 		virtual void computeCost();
 		virtual void computeDerivative();
-		virtual void createDisparity(cv::Mat &disparity);
+		//virtual void createDisparity(cv::Mat &disparity);
 		void computeRotation();
 		void computeTranslation(cv::Mat &translation, cv::Mat &Epipole);
 		virtual void postProcess(cv::Mat &disparity);

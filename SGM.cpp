@@ -1,4 +1,5 @@
 #include "SGM.h"
+#include "ransac.h"
 #include <unistd.h>
 
 SGM::SGM(const cv::Mat &imgLeftLast_, const cv::Mat &imgLeft_, const cv::Mat &imgRight_, const int PENALTY1_, const int PENALTY2_, const int winRadius_):
@@ -1232,3 +1233,14 @@ void SGMStereoFlow::computeCost(){
 
 }
 
+void SGMStereoFlow::postProcess(cv::Mat &disparity)
+{
+	//Set flagged disparities to zero
+	for(int y = winRadius; y < HEIGHT - winRadius; y++){
+		for(int x = winRadius; x < WIDTH - winRadius; x++){
+			if(disFlag.at<uchar>(y,x) == static_cast<uchar>(DISFLAG)){	
+				disparity.at<SGM::VecDf>(y,x) = 0.0;
+			}
+		}
+	}
+}

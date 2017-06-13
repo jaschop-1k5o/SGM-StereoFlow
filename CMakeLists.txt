@@ -10,18 +10,18 @@ project( DisplayImage )
 #----------------------------------------------------------------------------------
 #set(OpenCV_DIR "/usr/share/OpenCV") #system level
 SET(OpenCV_DIR "/home/johann/TUM/17S/Seminar-HWSWCodesign/OpenCvRepo/opencv/build") #local level
-#SET(PCL_DIR "/home/sanyu/PCL/lib/share/pcl-1.8") #local level
+SET(PCL_DIR "/usr/lib") #local level
 
-#find_package( PCL REQUIRED )
+find_package( PCL REQUIRED )
 find_package( OpenCV REQUIRED )
 
 message("-- OpenCVConfig.cmake :${OpenCV_CONFIG}")
 message("-- OpenCV_INCLUDE_DIRS :${OpenCV_INCLUDE_DIRS}")
 message("-- OpenCV_INSTALL_PATH :${OpenCV_INSTALL_PATH}")
 message("-- OpenCV_LIBS_PATH :${OpenCV_LIBS_PATH}")
-#message("-- PCLConfig.cmake :${PCL_CONFIG}")
-#message("-- PCL_INCLUDE_DIRS :${PCL_INCLUDE_DIRS}")
-#message("-- PCL_INSTALL_PATH :${PCL_INSTALL_PATH}")
+message("-- PCLConfig.cmake :${PCL_CONFIG}")
+message("-- PCL_INCLUDE_DIRS :${PCL_INCLUDE_DIRS}")
+message("-- PCL_INSTALL_PATH :${PCL_INSTALL_PATH}")
 
 #set(CMAKE_CXX_FLAGS "-O3")        ## Optimize
 
@@ -35,4 +35,4 @@ SET(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -pg")
 
 add_executable( sgm_stereo sgm_stereo.cpp SGM.cpp )
 target_link_libraries( sgm_stereo ${OpenCV_LIBS})
-
+target_link_libraries( sgm_stereo ${PCL_LIBS})

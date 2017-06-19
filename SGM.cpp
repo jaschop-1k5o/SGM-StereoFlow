@@ -1,5 +1,5 @@
 #include "SGM.h"
-#include "ransac.h"
+//#include "ransac.h"
 #include <unistd.h>
 
 SGM::SGM(const cv::Mat &imgLeftLast_, const cv::Mat &imgLeft_, const cv::Mat &imgRight_, const int PENALTY1_, const int PENALTY2_, const int winRadius_):
@@ -837,6 +837,19 @@ SGMFlow::~SGMFlow(){
 	derivativeFlowLeft.release();
 }
 
+SGMStereoFlow::~SGMStereoFlow(){
+	imgRotation.release();
+	EpipoleLeftLast.release();
+	EpipoleLeft.release();
+	translationLeftLast.release();
+	translationLeft.release();
+	fundamentalMatrix.release();
+	disFlag.release();
+	derivativeStereoLeft.release();
+	derivativeStereoRight.release();
+	derivativeFlowLeftLast.release();
+	derivativeFlowLeft.release();
+}
 
 void SGMFlow::computeRotation(){
 
@@ -882,12 +895,69 @@ void SGMFlow::computeRotation(){
 	A.release();
 	b.release();
 	x_sol.release();
+	std::cout<<"ComputeRotation finished";
 }
 
+void SGMStereoFlow::computeRotation(){
+	//identical to SGMFlow::computeRotation()
+	const double cx = (double)WIDTH/2.0;
+	const double cy = (double)HEIGHT/2.0;
+	cv::Mat A(WIDTH*HEIGHT,5,CV_64FC1,cv::Scalar(0.0));
+	cv::Mat b(WIDTH*HEIGHT,1,CV_64FC1,cv::Scalar(0.0));
+	cv::Mat x_sol;
+	for(int y = 0; y < HEIGHT; y++){
+		for(int x = 0; x < WIDTH; x++){
+			double x_, y_;
+			cv::Mat hom(3,1,CV_64FC1);
+			x_ = x - cx;
+			y_ = y - cy;
+			//generate homogenous coord
+			hom.at<double>(0,0) = (double)x;
+			hom.at<double>(1,0) = (double)y;
+			hom.at<double>(2,0) = 1.0;
+			//calc epiline through pixel
+			cv::Mat epi = fundamentalMatrix*hom;
+			A.at<double>(y*WIDTH+x,0) = epi.at<double>(0,0);
+			A.at<double>(y*WIDTH+x,1) = epi.at<double>(1,0);
+			A.at<double>(y*WIDTH+x,2) = (epi.at<double>(1,0)*x_)-(epi.at<double>(0,0)*y_);
+			A.at<double>(y*WIDTH+x,3) = (epi.at<double>(0,0)*x_*x_)+(epi.at<double>(1,0)*x_*y_);
+			A.at<double>(y*WIDTH+x,4) = (epi.at<double>(0,0)*x_*y_)+(epi.at<double>(1,0)*y_*y_);
+			b.at<double>(y*WIDTH+x,0) = -epi.at<double>(2,0)-(epi.at<double>(0,0)*x)-(epi.at<double>(1,0)*y);
+		}
+	}
+	cv::solve(A,b,x_sol,DECOMP_QR);
+	
+	std::cout<<"Rotation coef: "<<x_sol<<std::endl;
+	for(int y = 0; y < HEIGHT; y++){
+		for(int x = 0; x < WIDTH; x++){
+			float x_, y_;
+			x_ = x - cx;
+			y_ = y - cy;
+			
+			imgRotation.at<Vec2f>(y,x)[0] = (float)(x_sol.at<double>(0,0)-(x_sol.at<double>(2,0)*y_)+(x_sol.at<double>(3,0)*x_*x_)+(x_sol.at<double>(4,0)*x_*y_));
+			imgRotation.at<Vec2f>(y,x)[1] = (float)(x_sol.at<double>(1,0)+(x_sol.at<double>(2,0)*x_)+(x_sol.at<double>(3,0)*x_*y_)+(x_sol.at<double>(4,0)*y_*y_));
+		}	
+	}
+
+	A.release();
+	b.release();
+	x_sol.release();
+}
+
+void SGMStereoFlow::setAlphaRansac(cv::Mat &disparity, cv::Mat &disparityFLlow, cv::Mat &disflag_)
+{
+	//WHILE PCL BROKEN: set alpha(x,y) := 1
+	ransacAlpha = cv::Vec3f(0.0,0.0,1.0);
+}
+
+void SGMStereoFlow::setEvidence(cv::Mat &eviStereo_, cv::Mat &eviFlow_ ,cv::Mat &disFlag_)
+{
+	eviStereo = eviStereo_;
+	eviFlow = eviFlow_;
+	disFlag = disFlag_;
+}
 
 void SGMFlow::computeTranslation(cv::Mat &translation, cv::Mat &Epipole){
-	
-//std::cout<<" Epipole"<<Epipole<<std::endl;
 	for ( int x = 0; x < WIDTH; x++ ) {
       		for ( int y = 0; y < HEIGHT; y++ ) {
 			float delta_x = (x - Epipole.at<float>(0));
@@ -897,8 +967,22 @@ void SGMFlow::computeTranslation(cv::Mat &translation, cv::Mat &Epipole){
 			float dir_y = (delta_y/nomi);
 			translation.at<Vec2f>(y,x)[0]=dir_x;
 			translation.at<Vec2f>(y,x)[1]=dir_y;
-//std::cout<<dir_x<<" "<<dir_y<<std::endl;
-				//sleep(1);
+		}
+	}
+
+}
+
+void SGMStereoFlow::computeTranslation(cv::Mat &translation, cv::Mat &Epipole){
+	//identical to SGMFlow::computeTranslation()
+	for ( int x = 0; x < WIDTH; x++ ) {
+      		for ( int y = 0; y < HEIGHT; y++ ) {
+			float delta_x = (x - Epipole.at<float>(0));
+			float delta_y = (y - Epipole.at<float>(1));
+			float nomi = sqrt(delta_x*delta_x + delta_y*delta_y);
+			float dir_x = (delta_x/nomi);
+			float dir_y = (delta_y/nomi);
+			translation.at<Vec2f>(y,x)[0]=dir_x;
+			translation.at<Vec2f>(y,x)[1]=dir_y;
 		}
 	}
 
@@ -983,6 +1067,9 @@ for (int y = 1; y < HEIGHT - 1; ++y) {
 
 }
 
+void SGMStereoFlow::computeDerivative(){
+	//TODO
+}
 
 void SGMFlow::computeCost(){
 	

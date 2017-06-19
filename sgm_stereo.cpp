@@ -7,7 +7,8 @@
 #include <vector>
 
 //-- macros: STEREO|FLOW|STEREOFLOW|DRAWEPIPOLES
-#define STEREOFLOW
+#define FLOW
+#define DRAWEPIPOLES
 
 void computeEpipoles(std::vector<cv::Vec3f> &lines, cv::Mat &x_sol);
 
@@ -160,6 +161,7 @@ int main(int argc, char *argv[]){
 	SGMFlow sgmflow(grayLeftLast, grayLeft, grayRight, PENALTY1, PENALTY2, winRadius, Epipole_1, Epipole_2, Fmat);
 	sgmflow.runSGM(disparityFlow_);
 	imshow("disparityFlow_",disparityFlow_);
+	imwrite("../imageLeftLast_epipoles.jpg",imageLeftLast);
 	imshow("imageLeftLast_",imageLeftLast);
 	cv::Mat disFlowFlag;
 	sgmflow.copyDisflag(disFlowFlag);

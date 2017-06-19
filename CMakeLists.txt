@@ -10,9 +10,9 @@ project( DisplayImage )
 #----------------------------------------------------------------------------------
 #set(OpenCV_DIR "/usr/share/OpenCV") #system level
 SET(OpenCV_DIR "/home/johann/TUM/17S/Seminar-HWSWCodesign/OpenCvRepo/opencv/build") #local level
-SET(PCL_DIR "/usr/lib") #local level
+#SET(PCL_DIR "/home/johann/TUM/17S/Seminar-HWSWCodesign/PCLLocal/lib/share/pcl-1.8") #local level
 
-find_package( PCL REQUIRED )
+#find_package( PCL REQUIRED )
 find_package( OpenCV REQUIRED )
 
 message("-- OpenCVConfig.cmake :${OpenCV_CONFIG}")

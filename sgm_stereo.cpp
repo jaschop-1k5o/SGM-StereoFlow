@@ -152,6 +152,7 @@ int main(int argc, char *argv[]){
 		cv::circle(imageLeftLast, new_keypoints_1[i],10,colorRed,1);
 		cv::circle(imageLeft, new_keypoints_2[i],10,colorBlue,1);	
 	}
+	imwrite("../imageLeftLast_epipoles.jpg",imageLeftLast);
 #endif
 #endif
 
@@ -160,8 +161,7 @@ int main(int argc, char *argv[]){
 	cv::Mat disparityFlow_(grayLeft.rows, grayLeft.cols, CV_8UC1);
 	SGMFlow sgmflow(grayLeftLast, grayLeft, grayRight, PENALTY1, PENALTY2, winRadius, Epipole_1, Epipole_2, Fmat);
 	sgmflow.runSGM(disparityFlow_);
-	imshow("disparityFlow_",disparityFlow_);
-	imwrite("../imageLeftLast_epipoles.jpg",imageLeftLast);
+	imshow("disparityFlow_",disparityFlow_);	
 	imshow("imageLeftLast_",imageLeftLast);
 	cv::Mat disFlowFlag;
 	sgmflow.copyDisflag(disFlowFlag);

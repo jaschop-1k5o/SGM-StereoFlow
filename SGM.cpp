@@ -889,11 +889,13 @@ void SGMFlow::computeRotation(){
 			
 			imgRotation.at<Vec2f>(y,x)[0] = (float)(x_sol.at<double>(0,0)-(x_sol.at<double>(2,0)*y_)+(x_sol.at<double>(3,0)*x_*x_)+(x_sol.at<double>(4,0)*x_*y_));
 			imgRotation.at<Vec2f>(y,x)[1] = (float)(x_sol.at<double>(1,0)+(x_sol.at<double>(2,0)*x_)+(x_sol.at<double>(3,0)*x_*y_)+(x_sol.at<double>(4,0)*y_*y_));
+			//std::cout<<"loop(y="<<y<<",x="<<x<<") finished";
 		}	
+		//std::cout<<"loop(y="<<y<<") finished\n";	
 	}
 
 	A.release();
-	b.release();
+	b.release();	
 	x_sol.release();
 	std::cout<<"ComputeRotation finished";
 }

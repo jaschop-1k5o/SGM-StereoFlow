@@ -7,8 +7,8 @@
 #include <vector>
 
 //-- macros: STEREO|FLOW|STEREOFLOW|DRAWEPIPOLES
-#define FLOW
-#define DRAWEPIPOLES
+#define STEREOFLOW
+//#define DRAWEPIPOLES
 
 void computeEpipoles(std::vector<cv::Vec3f> &lines, cv::Mat &x_sol);
 
@@ -176,15 +176,16 @@ int main(int argc, char *argv[]){
 #ifndef FLOW
 	cv::Mat disFlowFlag;
 #endif
-	disparityFlow=cv::imread("/home/sanyu/spsstereo/sanyu_local/sgm_lib/results/flow/Flow106_8paths_40D_wo.jpg",CV_LOAD_IMAGE_GRAYSCALE );
-	disparityStereo=cv::imread("/home/sanyu/spsstereo/sanyu_local/sgm_lib/results/stereo/disparity106_8paths_80D_wo.jpg",CV_LOAD_IMAGE_GRAYSCALE );
-	disFlowFlag=cv::imread("/home/sanyu/spsstereo/sanyu_local/sgm_lib/results/flow/aviFlowFlag106.jpg",CV_LOAD_IMAGE_GRAYSCALE );	
+	disparityFlow=cv::imread("/home/johann/TUM/17S/Seminar-HWSWCodesign/outputs/disparityFlow.jpg",CV_LOAD_IMAGE_GRAYSCALE );
+	disparityStereo=cv::imread("/home/johann/TUM/17S/Seminar-HWSWCodesign/outputs/disparity.jpg",CV_LOAD_IMAGE_GRAYSCALE );
+	disFlowFlag=cv::imread("/home/johann/TUM/17S/Seminar-HWSWCodesign/outputs/aviFlowFlag.jpg",CV_LOAD_IMAGE_GRAYSCALE );	
 	SGMStereoFlow sgmsf(grayLeftLast, grayLeft, grayRight, PENALTY1, PENALTY2, winRadius, Epipole_1, Epipole_2, Fmat);
 	sgmsf.setAlphaRansac(disparityStereo, disparityFlow, disFlowFlag);
 
+	/*-- disparity with outliers not available right now
 	cv::Mat disparityStereo_wOutliers = cv::imread("/home/sanyu/spsstereo/sanyu_local/sgm_lib/results/stereoEvi/disparity106_evi30000.jpg",CV_LOAD_IMAGE_GRAYSCALE );
-	cv::Mat disparityFlow_wOutliers = cv::imread("/home/sanyu/spsstereo/sanyu_local/sgm_lib/results/flow/Flow106_8paths_40D_wo.jpg",CV_LOAD_IMAGE_GRAYSCALE );
-	sgmsf.setEvidence(disparityStereo_wOutliers, disparityFlow_wOutliers, disFlowFlag);
+	cv::Mat disparityFlow_wOutliers = cv::imread("/home/sanyu/spsstereo/sanyu_local/sgm_lib/results/flow/Flow106_8paths_40D_wo.jpg",CV_LOAD_IMAGE_GRAYSCALE );*/
+	sgmsf.setEvidence(disparityStereo, disparityFlow, disFlowFlag);
 
 	cv::Mat disparityStereoFlow(grayLeft.rows, grayLeft.cols, CV_8UC1);
 	sgmsf.runSGM(disparityStereoFlow);

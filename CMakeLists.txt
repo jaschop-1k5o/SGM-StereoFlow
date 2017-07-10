@@ -30,5 +30,5 @@ SET(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -pg")
 SET(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -pg")
 
 add_executable( sgm_stereoflow sgm_stereoflow.cpp SGM.cpp )
-target_link_libraries( sgm_stereo ${OpenCV_LIBS})
-target_link_libraries( sgm_stereo ${PCL_SAMPLE_CONSENSUS_LIBRARIES} )
+target_link_libraries( sgm_stereoflow ${OpenCV_LIBS})
+target_link_libraries( sgm_stereoflow ${PCL_SAMPLE_CONSENSUS_LIBRARIES} )

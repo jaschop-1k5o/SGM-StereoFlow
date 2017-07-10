@@ -9,7 +9,7 @@
 #include <pcl/sample_consensus/ransac.h>
 #include <pcl/sample_consensus/sac_model_plane.h>
 #include <pcl/sample_consensus/sac_model_sphere.h>
-#include <pcl/visualization/pcl_visualizer.h>
+//#include <pcl/visualization/pcl_visualizer.h>
 #include <boost/thread/thread.hpp>
 
 #include "opencv2/highgui.hpp"
@@ -18,7 +18,7 @@
 
 #include "SGM.h"
 
-void computeAlpha(cv::Mat &disparity, cv::Mat &disparityFLlow, std::vector<cv::Mat> &alpha, cv::Mat &disflag){
+void computeAlpha(cv::Mat &disparity, cv::Mat &disparityFlow, std::vector<cv::Mat> &alpha, cv::Mat &disflag){
 
 	const int HEIGHT = disparity.rows;
 	const int WIDTH = disparity.cols;
@@ -41,7 +41,7 @@ void computeAlpha(cv::Mat &disparity, cv::Mat &disparityFLlow, std::vector<cv::M
 				A.at<float>(counter,0) = static_cast<float>(Px * disparity.at<uchar>(Py, Px));
 				A.at<float>(counter,1) = static_cast<float>(Py * disparity.at<uchar>(Py, Px));
 				A.at<float>(counter,2) = static_cast<float>(disparity.at<uchar>(Py, Px));
-				b.at<float>(counter,0) = static_cast<float>(disparityFLlow.at<uchar>(Py, Px));
+				b.at<float>(counter,0) = static_cast<float>(disparityFlow.at<uchar>(Py, Px));
 				counter ++;
 			}
 		}
@@ -54,26 +54,26 @@ void computeAlpha(cv::Mat &disparity, cv::Mat &disparityFLlow, std::vector<cv::M
 	}
 }
 
-boost::shared_ptr<pcl::visualization::PCLVisualizer>
+/*boost::shared_ptr<pcl::visualization::PCLVisualizer>
 simpleVis (pcl::PointCloud<pcl::PointXYZ>::ConstPtr cloud)
 {
   // --------------------------------------------
   // -----Open 3D viewer and add point cloud-----
   // --------------------------------------------
-/*  boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer (new pcl::visualization::PCLVisualizer ("3D Viewer"));
+  boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer (new pcl::visualization::PCLVisualizer ("3D Viewer"));
   viewer->setBackgroundColor (0, 0, 0);
   viewer->addPointCloud<pcl::PointXYZ> (cloud, "sample cloud");
   viewer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 3, "sample cloud");
   //viewer->addCoordinateSystem (1.0, "global");
   viewer->initCameraParameters ();
   return (viewer);
-*/}
-
-cv::Vec3f ransac(cv::Mat &disparity, cv::Mat &disparityFLlow, cv::Mat disflag)
+}
+*/
+cv::Vec3f ransac(cv::Mat &disparity, cv::Mat &disparityFlow, cv::Mat disflag)
 {
 
 	std::vector<cv::Mat> alpha;
-	computeAlpha(disparity, disparityFLlow, alpha, disflag);
+	computeAlpha(disparity, disparityFlow, alpha, disflag);
 	const int alphaSize = alpha.size();
 
   	// initialize PointClouds
@@ -138,7 +138,7 @@ cv::Vec3f ransac(cv::Mat &disparity, cv::Mat &disparityFLlow, cv::Mat disflag)
 			//	std::cout<<"x: "<<x<<" y: "<<y<<std::endl;				
 			//	std::cout<<(short)(disparity.at<uchar>(y,x))<<std::endl;
 			//	sleep(1);
-				diff.at<uchar>(y,x) = static_cast<uchar>(abs(omega.at<uchar>(y,x) - disparityFLlow.at<uchar>(y,x)));
+				diff.at<uchar>(y,x) = static_cast<uchar>(abs(omega.at<uchar>(y,x) - disparityFlow.at<uchar>(y,x)));
 			}
 		}
 		//cv::imshow("omega",omega );

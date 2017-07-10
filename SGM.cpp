@@ -1,5 +1,5 @@
 #include "SGM.h"
-//#include "ransac.h"
+#include "ransac.h"
 #include <unistd.h>
 
 SGM::SGM(const cv::Mat &imgLeftLast_, const cv::Mat &imgLeft_, const cv::Mat &imgRight_, const int PENALTY1_, const int PENALTY2_, const int winRadius_):
@@ -949,7 +949,8 @@ void SGMStereoFlow::computeRotation(){
 void SGMStereoFlow::setAlphaRansac(cv::Mat &disparity, cv::Mat &disparityFLlow, cv::Mat &disflag_)
 {
 	//WHILE PCL BROKEN: set alpha(x,y) := 1
-	ransacAlpha = cv::Vec3f(0.0,0.0,1.0);
+	//ransacAlpha = cv::Vec3f(0.0,0.0,1.0);
+	ransacAlpha = ransac(eviStereo,eviFlow,disFlag);
 }
 
 void SGMStereoFlow::setEvidence(cv::Mat &eviStereo_, cv::Mat &eviFlow_ ,cv::Mat &disFlag_)

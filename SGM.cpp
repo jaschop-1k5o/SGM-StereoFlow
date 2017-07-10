@@ -97,8 +97,9 @@ void SGM::consistencyCheck(cv::Mat disparityLeft, cv::Mat disparityRight, cv::Ma
 
 void SGM::resetDirAccumulatedCost(){}
 
-void SGMFlow::resetDirAccumulatedCost(){
 
+void SGMFlow::resetDirAccumulatedCost(){
+/* OBSOLETE
 for (int x = 0 ; x < WIDTH; x++ ) {
       		for ( int y = 0; y < HEIGHT; y++ ) {
 			if(disFlag.at<uchar>(y,x)==static_cast<uchar>(DISFLAG)){
@@ -111,7 +112,7 @@ for (int x = 0 ; x < WIDTH; x++ ) {
       	}
 
 
-}
+*/}
 
 
 void SGM::runSGM(cv::Mat &disparity){
@@ -150,7 +151,7 @@ resetDirAccumulatedCost();
 	sumOverAllCost();
 std::cout<<accumulatedCost.at<SGM::VecDf>(250,126)<<std::endl;
 
-	aggregation<1,1>(cost);
+	/*aggregation<1,1>(cost);
 resetDirAccumulatedCost();
 	sumOverAllCost();
 std::cout<<accumulatedCost.at<SGM::VecDf>(250,126)<<std::endl;	
@@ -165,6 +166,7 @@ std::cout<<accumulatedCost.at<SGM::VecDf>(250,126)<<std::endl;
 	aggregation<-1,-1>(cost);
 resetDirAccumulatedCost();
 	sumOverAllCost();
+*/
 
 /*
 	aggregation<2,1>();
@@ -258,12 +260,13 @@ resetDirAccumulatedCost();
 	imshow("disparityRight", disparityRight);
 	imwrite("../disparityRight.jpg", disparityRight);
 	consistencyCheck(disparityLeft, disparityRight, disparity);
-
 */
+
+/*	//-- files not available
 	cv::Mat disparityRight =cv::imread("/home/sanyu/spsstereo/sanyu_local/sgm_lib/disparityRight.jpg",CV_LOAD_IMAGE_GRAYSCALE);
 	cv::Mat disparityLeft =cv::imread("/home/sanyu/spsstereo/sanyu_local/sgm_lib/disparityLeft.jpg",CV_LOAD_IMAGE_GRAYSCALE);
 	consistencyCheck(disparityLeft, disparityRight, disparity);
-
+*/
 }
 
 void SGM::computeCost(){}
@@ -825,6 +828,26 @@ SGMFlow::SGMFlow(const cv::Mat &imgLeftLast_, const cv::Mat &imgLeft_, const cv:
 		disFlag = Mat::zeros(HEIGHT, WIDTH, CV_8UC1);
 }
 
+SGMStereoFlow::SGMStereoFlow(const cv::Mat &imgLeftLast_, const cv::Mat &imgLeft_, const cv::Mat &imgRight_, const int PENALTY1_, const int PENALTY2_, const int winRadius_,
+		 cv::Mat &EpipoleLeftLast_, cv::Mat &EpipoleLeft_, cv::Mat &fundamentalMatrix_)
+		:SGM(imgLeftLast_, imgLeft_, imgRight_, PENALTY1_, PENALTY2_, winRadius_){
+		//VVV STEREO variables VVV
+		derivativeStereoLeft = Mat::zeros(HEIGHT, WIDTH, CV_32FC1);
+		derivativeStereoRight = Mat::zeros(HEIGHT, WIDTH, CV_32FC1);
+
+		//VVV FLOW variables VVV
+		EpipoleLeftLast_.copyTo(EpipoleLeftLast);
+		EpipoleLeft_.copyTo(EpipoleLeft);
+		fundamentalMatrix_.copyTo(fundamentalMatrix);
+		imgRotation = Mat::zeros(HEIGHT, WIDTH, CV_32FC2);
+		computeRotation();
+
+		translationLeftLast = Mat::zeros(HEIGHT, WIDTH, CV_32FC2);
+		translationLeft = Mat::zeros(HEIGHT, WIDTH, CV_32FC2);
+		derivativeFlowLeftLast = Mat::zeros(HEIGHT, WIDTH, CV_32FC1);
+		derivativeFlowLeft = Mat::zeros(HEIGHT, WIDTH, CV_32FC1);
+}
+
 SGMFlow::~SGMFlow(){
 	imgRotation.release();
 	EpipoleLeftLast.release();
@@ -844,14 +867,13 @@ SGMStereoFlow::~SGMStereoFlow(){
 	translationLeftLast.release();
 	translationLeft.release();
 	fundamentalMatrix.release();
-	disFlag.release();
 	derivativeStereoLeft.release();
 	derivativeStereoRight.release();
 	derivativeFlowLeftLast.release();
 	derivativeFlowLeft.release();
 }
 
-void SGMFlow::computeRotation(){
+void _computeRotation(cv::Mat &imgRotation, cv::Mat &fundamentalMatrix, int WIDTH, int HEIGHT){
 
 	const double cx = (double)WIDTH/2.0;
 	const double cy = (double)HEIGHT/2.0;
@@ -880,7 +902,6 @@ void SGMFlow::computeRotation(){
 	}
 	cv::solve(A,b,x_sol,DECOMP_QR);
 	
-	std::cout<<"Rotation coef: "<<x_sol<<std::endl;
 	for(int y = 0; y < HEIGHT; y++){
 		for(int x = 0; x < WIDTH; x++){
 			float x_, y_;
@@ -889,68 +910,29 @@ void SGMFlow::computeRotation(){
 			
 			imgRotation.at<Vec2f>(y,x)[0] = (float)(x_sol.at<double>(0,0)-(x_sol.at<double>(2,0)*y_)+(x_sol.at<double>(3,0)*x_*x_)+(x_sol.at<double>(4,0)*x_*y_));
 			imgRotation.at<Vec2f>(y,x)[1] = (float)(x_sol.at<double>(1,0)+(x_sol.at<double>(2,0)*x_)+(x_sol.at<double>(3,0)*x_*y_)+(x_sol.at<double>(4,0)*y_*y_));
-			//std::cout<<"loop(y="<<y<<",x="<<x<<") finished";
 		}	
-		//std::cout<<"loop(y="<<y<<") finished\n";	
 	}
 
 	A.release();
 	b.release();	
 	x_sol.release();
-	std::cout<<"ComputeRotation finished";
+	std::cout<<"compute rotation: done"<<std::endl;
+}
+
+void SGMFlow::computeRotation(){
+	_computeRotation(imgRotation,fundamentalMatrix,WIDTH,HEIGHT);
 }
 
 void SGMStereoFlow::computeRotation(){
-	//identical to SGMFlow::computeRotation()
-	const double cx = (double)WIDTH/2.0;
-	const double cy = (double)HEIGHT/2.0;
-	cv::Mat A(WIDTH*HEIGHT,5,CV_64FC1,cv::Scalar(0.0));
-	cv::Mat b(WIDTH*HEIGHT,1,CV_64FC1,cv::Scalar(0.0));
-	cv::Mat x_sol;
-	for(int y = 0; y < HEIGHT; y++){
-		for(int x = 0; x < WIDTH; x++){
-			double x_, y_;
-			cv::Mat hom(3,1,CV_64FC1);
-			x_ = x - cx;
-			y_ = y - cy;
-			//generate homogenous coord
-			hom.at<double>(0,0) = (double)x;
-			hom.at<double>(1,0) = (double)y;
-			hom.at<double>(2,0) = 1.0;
-			//calc epiline through pixel
-			cv::Mat epi = fundamentalMatrix*hom;
-			A.at<double>(y*WIDTH+x,0) = epi.at<double>(0,0);
-			A.at<double>(y*WIDTH+x,1) = epi.at<double>(1,0);
-			A.at<double>(y*WIDTH+x,2) = (epi.at<double>(1,0)*x_)-(epi.at<double>(0,0)*y_);
-			A.at<double>(y*WIDTH+x,3) = (epi.at<double>(0,0)*x_*x_)+(epi.at<double>(1,0)*x_*y_);
-			A.at<double>(y*WIDTH+x,4) = (epi.at<double>(0,0)*x_*y_)+(epi.at<double>(1,0)*y_*y_);
-			b.at<double>(y*WIDTH+x,0) = -epi.at<double>(2,0)-(epi.at<double>(0,0)*x)-(epi.at<double>(1,0)*y);
-		}
-	}
-	cv::solve(A,b,x_sol,DECOMP_QR);
-	
-	std::cout<<"Rotation coef: "<<x_sol<<std::endl;
-	for(int y = 0; y < HEIGHT; y++){
-		for(int x = 0; x < WIDTH; x++){
-			float x_, y_;
-			x_ = x - cx;
-			y_ = y - cy;
-			
-			imgRotation.at<Vec2f>(y,x)[0] = (float)(x_sol.at<double>(0,0)-(x_sol.at<double>(2,0)*y_)+(x_sol.at<double>(3,0)*x_*x_)+(x_sol.at<double>(4,0)*x_*y_));
-			imgRotation.at<Vec2f>(y,x)[1] = (float)(x_sol.at<double>(1,0)+(x_sol.at<double>(2,0)*x_)+(x_sol.at<double>(3,0)*x_*y_)+(x_sol.at<double>(4,0)*y_*y_));
-		}	
-	}
-
-	A.release();
-	b.release();
-	x_sol.release();
+	_computeRotation(imgRotation,fundamentalMatrix,WIDTH,HEIGHT);
 }
 
-void SGMStereoFlow::setAlphaRansac(cv::Mat &disparity, cv::Mat &disparityFLlow, cv::Mat &disflag_)
+void SGMStereoFlow::setAlphaRansac(cv::Mat &disparity, cv::Mat &disparityFlow, cv::Mat &disFlag_)
 {
 	//WHILE PCL BROKEN: set alpha(x,y) := 1
 	//ransacAlpha = cv::Vec3f(0.0,0.0,1.0);
-	ransacAlpha = ransac(eviStereo,eviFlow,disFlag);
+	ransacAlpha = ransac(disparity,disparityFlow,disFlag_);
+	std::cout<<"alpha="<<ransacAlpha<<std::endl;
 }
 
 void SGMStereoFlow::setEvidence(cv::Mat &eviStereo_, cv::Mat &eviFlow_ ,cv::Mat &disFlag_)
@@ -960,7 +942,7 @@ void SGMStereoFlow::setEvidence(cv::Mat &eviStereo_, cv::Mat &eviFlow_ ,cv::Mat 
 	disFlag = disFlag_;
 }
 
-void SGMFlow::computeTranslation(cv::Mat &translation, cv::Mat &Epipole){
+void _computeTranslation(cv::Mat &translation, cv::Mat &Epipole, int WIDTH, int HEIGHT){
 	for ( int x = 0; x < WIDTH; x++ ) {
       		for ( int y = 0; y < HEIGHT; y++ ) {
 			float delta_x = (x - Epipole.at<float>(0));
@@ -975,76 +957,68 @@ void SGMFlow::computeTranslation(cv::Mat &translation, cv::Mat &Epipole){
 
 }
 
-void SGMStereoFlow::computeTranslation(cv::Mat &translation, cv::Mat &Epipole){
-	//identical to SGMFlow::computeTranslation()
-	for ( int x = 0; x < WIDTH; x++ ) {
-      		for ( int y = 0; y < HEIGHT; y++ ) {
-			float delta_x = (x - Epipole.at<float>(0));
-			float delta_y = (y - Epipole.at<float>(1));
-			float nomi = sqrt(delta_x*delta_x + delta_y*delta_y);
-			float dir_x = (delta_x/nomi);
-			float dir_y = (delta_y/nomi);
-			translation.at<Vec2f>(y,x)[0]=dir_x;
-			translation.at<Vec2f>(y,x)[1]=dir_y;
-		}
-	}
+void SGMFlow::computeTranslation(cv::Mat &translation, cv::Mat &Epipole){
+	_computeTranslation(translation,Epipole,WIDTH,HEIGHT);
+}
 
+void SGMStereoFlow::computeTranslation(cv::Mat &translation, cv::Mat &Epipole){
+	_computeTranslation(translation,Epipole,WIDTH,HEIGHT);
 }
 
 
 void SGMFlow::computeDerivative(){
-float sobelCapValue_ = 15;
+	float sobelCapValue_ = 15;
 	cv::Mat gradxLeftLast, gradyLeftLast;
 	cv::Sobel(imgLeftLast, gradxLeftLast, CV_32FC1, 1, 0);
 
-for (int y = 1; y < HEIGHT - 1; ++y) {
-			for (int x = 1; x < WIDTH - 1; ++x) {
-				float sobelValue = gradxLeftLast.at<float>(y,x);
-				if (sobelValue > sobelCapValue_) sobelValue = 2*sobelCapValue_;
-				else if (sobelValue < -sobelCapValue_) sobelValue = 0;
-				else sobelValue += sobelCapValue_;
-				gradxLeftLast.at<float>(y,x) = sobelValue;
-				//std::cout<<sobelValue<<std::endl;sleep(1);
-			}
-}
+	for (int y = 1; y < HEIGHT - 1; ++y) {
+		for (int x = 1; x < WIDTH - 1; ++x) {
+			float sobelValue = gradxLeftLast.at<float>(y,x);
+			if (sobelValue > sobelCapValue_) sobelValue = 2*sobelCapValue_;
+			else if (sobelValue < -sobelCapValue_) sobelValue = 0;
+			else sobelValue += sobelCapValue_;
+			gradxLeftLast.at<float>(y,x) = sobelValue;
+			//std::cout<<sobelValue<<std::endl;sleep(1);
+		}
+	}
 
 
 	cv::Sobel(imgLeftLast, gradyLeftLast, CV_32FC1, 0, 1);
 
-for (int y = 1; y < HEIGHT - 1; ++y) {
-			for (int x = 1; x < WIDTH - 1; ++x) {
-				float sobelValue = gradyLeftLast.at<float>(y,x);
-				if (sobelValue > sobelCapValue_) sobelValue = 2*sobelCapValue_;
-				else if (sobelValue < -sobelCapValue_) sobelValue = 0;
-				else sobelValue += sobelCapValue_;
-				gradyLeftLast.at<float>(y,x) = sobelValue;
-				//std::cout<<sobelValue<<std::endl;sleep(1);
-			}
-}
+	for (int y = 1; y < HEIGHT - 1; ++y) {
+		for (int x = 1; x < WIDTH - 1; ++x) {
+			float sobelValue = gradyLeftLast.at<float>(y,x);
+			if (sobelValue > sobelCapValue_) sobelValue = 2*sobelCapValue_;
+			else if (sobelValue < -sobelCapValue_) sobelValue = 0;
+			else sobelValue += sobelCapValue_;
+			gradyLeftLast.at<float>(y,x) = sobelValue;
+			//std::cout<<sobelValue<<std::endl;sleep(1);
+		}
+	}
 	cv::Mat gradxLeft, gradyLeft;
 	cv::Sobel(imgLeft, gradxLeft, CV_32FC1, 1, 0);
-for (int y = 1; y < HEIGHT - 1; ++y) {
-			for (int x = 1; x < WIDTH - 1; ++x) {
-				float sobelValue = gradxLeft.at<float>(y,x);
-				if (sobelValue > sobelCapValue_) sobelValue = 2*sobelCapValue_;
-				else if (sobelValue < -sobelCapValue_) sobelValue = 0;
-				else sobelValue += sobelCapValue_;
-				gradxLeft.at<float>(y,x) = sobelValue;
-				//std::cout<<sobelValue<<std::endl;sleep(1);
-			}
-}
+	for (int y = 1; y < HEIGHT - 1; ++y) {
+		for (int x = 1; x < WIDTH - 1; ++x) {
+			float sobelValue = gradxLeft.at<float>(y,x);
+			if (sobelValue > sobelCapValue_) sobelValue = 2*sobelCapValue_;
+			else if (sobelValue < -sobelCapValue_) sobelValue = 0;
+			else sobelValue += sobelCapValue_;
+			gradxLeft.at<float>(y,x) = sobelValue;
+			//std::cout<<sobelValue<<std::endl;sleep(1);
+		}
+	}
 
 	cv::Sobel(imgLeft, gradyLeft, CV_32FC1, 0, 1);
- for (int y = 1; y < HEIGHT - 1; ++y) {
-			for (int x = 1; x < WIDTH - 1; ++x) {
-				float sobelValue = gradyLeft.at<float>(y,x);
-				if (sobelValue > sobelCapValue_) sobelValue = 2*sobelCapValue_;
-				else if (sobelValue < -sobelCapValue_) sobelValue = 0;
-				else sobelValue += sobelCapValue_;
-				gradyLeft.at<float>(y,x) = sobelValue;
-				//std::cout<<sobelValue<<std::endl;sleep(1);
-			}
-}
+	 for (int y = 1; y < HEIGHT - 1; ++y) {
+		for (int x = 1; x < WIDTH - 1; ++x) {
+			float sobelValue = gradyLeft.at<float>(y,x);
+			if (sobelValue > sobelCapValue_) sobelValue = 2*sobelCapValue_;
+			else if (sobelValue < -sobelCapValue_) sobelValue = 0;
+			else sobelValue += sobelCapValue_;
+			gradyLeft.at<float>(y,x) = sobelValue;
+			//std::cout<<sobelValue<<std::endl;sleep(1);
+		}
+	}
 	
 	//computeTranslation(translationLeftLast, EpipoleLeftLast);
 	computeTranslation(translationLeft, EpipoleLeft);
@@ -1071,54 +1045,120 @@ for (int y = 1; y < HEIGHT - 1; ++y) {
 }
 
 void SGMStereoFlow::computeDerivative(){
-	//TODO
+	//--- STEREO DERIVATIVES ---
+	cv::Mat gradx(HEIGHT, WIDTH, CV_32FC1);
+	cv::Sobel(imgLeft, derivativeStereoLeft, CV_32FC1,1,0);
+	//derivativeStereoLeft=cv::abs(gradx);
+	float sobelCapValue_ = 15;
+
+	for (int y = 1; y < HEIGHT - 1; ++y) {
+			for (int x = 1; x < WIDTH - 1; ++x) {
+				float sobelValue = derivativeStereoLeft.at<float>(y,x);
+				if (sobelValue > sobelCapValue_) sobelValue = 2*sobelCapValue_;
+				else if (sobelValue < -sobelCapValue_) sobelValue = 0;
+				else sobelValue += sobelCapValue_;
+				derivativeStereoLeft.at<float>(y,x) = sobelValue;
+				//std::cout<<sobelValue<<std::endl;sleep(1);
+			}
+	}
+
+
+	cv::Sobel(imgRight, derivativeStereoRight, CV_32FC1,1,0);
+	//derivativeStereoRight=cv::abs(gradx);
+
+	for (int y = 1; y < HEIGHT - 1; ++y) {
+			for (int x = 1; x < WIDTH - 1; ++x) {
+				float sobelValue = derivativeStereoRight.at<float>(y,x);
+				if (sobelValue > sobelCapValue_) sobelValue = 2*sobelCapValue_;
+				else if (sobelValue < -sobelCapValue_) sobelValue = 0;
+				else sobelValue += sobelCapValue_;
+				derivativeStereoRight.at<float>(y,x) = sobelValue;
+			}
+	}
+
+
+	gradx.release();
+
+	//--- FLOW DERIVATIVES ---
+	cv::Mat gradxLeftLast, gradyLeftLast;
+	cv::Sobel(imgLeftLast, gradxLeftLast, CV_32FC1, 1, 0);
+
+	for (int y = 1; y < HEIGHT - 1; ++y) {
+		for (int x = 1; x < WIDTH - 1; ++x) {
+			float sobelValue = gradxLeftLast.at<float>(y,x);
+			if (sobelValue > sobelCapValue_) sobelValue = 2*sobelCapValue_;
+			else if (sobelValue < -sobelCapValue_) sobelValue = 0;
+			else sobelValue += sobelCapValue_;
+			gradxLeftLast.at<float>(y,x) = sobelValue;
+			//std::cout<<sobelValue<<std::endl;sleep(1);
+		}
+	}
+
+
+	cv::Sobel(imgLeftLast, gradyLeftLast, CV_32FC1, 0, 1);
+
+	for (int y = 1; y < HEIGHT - 1; ++y) {
+		for (int x = 1; x < WIDTH - 1; ++x) {
+			float sobelValue = gradyLeftLast.at<float>(y,x);
+			if (sobelValue > sobelCapValue_) sobelValue = 2*sobelCapValue_;
+			else if (sobelValue < -sobelCapValue_) sobelValue = 0;
+			else sobelValue += sobelCapValue_;
+			gradyLeftLast.at<float>(y,x) = sobelValue;
+			//std::cout<<sobelValue<<std::endl;sleep(1);
+		}
+	}
+	cv::Mat gradxLeft, gradyLeft;
+	cv::Sobel(imgLeft, gradxLeft, CV_32FC1, 1, 0);
+	for (int y = 1; y < HEIGHT - 1; ++y) {
+		for (int x = 1; x < WIDTH - 1; ++x) {
+			float sobelValue = gradxLeft.at<float>(y,x);
+			if (sobelValue > sobelCapValue_) sobelValue = 2*sobelCapValue_;
+			else if (sobelValue < -sobelCapValue_) sobelValue = 0;
+			else sobelValue += sobelCapValue_;
+			gradxLeft.at<float>(y,x) = sobelValue;
+			//std::cout<<sobelValue<<std::endl;sleep(1);
+		}
+	}
+
+	cv::Sobel(imgLeft, gradyLeft, CV_32FC1, 0, 1);
+	 for (int y = 1; y < HEIGHT - 1; ++y) {
+		for (int x = 1; x < WIDTH - 1; ++x) {
+			float sobelValue = gradyLeft.at<float>(y,x);
+			if (sobelValue > sobelCapValue_) sobelValue = 2*sobelCapValue_;
+			else if (sobelValue < -sobelCapValue_) sobelValue = 0;
+			else sobelValue += sobelCapValue_;
+			gradyLeft.at<float>(y,x) = sobelValue;
+			//std::cout<<sobelValue<<std::endl;sleep(1);
+		}
+	}
+	
+	//computeTranslation(translationLeftLast, EpipoleLeftLast);
+	computeTranslation(translationLeft, EpipoleLeft);
+
+
+	for ( int x = 0; x < WIDTH; x++ ) {
+      		for ( int y = 0; y < HEIGHT; y++ ) {
+
+			derivativeFlowLeftLast.at<float>(y,x) = static_cast<float>(sqrt(pow(translationLeft.at<Vec2f>(y,x)[1]*gradyLeftLast.at<float>(y,x),2)+
+										pow(translationLeft.at<Vec2f>(y,x)[0]*gradxLeftLast.at<float>(y,x),2)));
+
+			derivativeFlowLeft.at<float>(y,x) = static_cast<float>(sqrt(pow(translationLeft.at<Vec2f>(y,x)[1]*gradyLeft.at<float>(y,x),2)+
+										 pow(translationLeft.at<Vec2f>(y,x)[0]*gradxLeft.at<float>(y,x),2)));	
+	
+		}
+	}
+
+	gradxLeftLast.release();
+	gradyLeftLast.release();
+	gradxLeft.release();
+	gradyLeft.release();
 }
 
 void SGMFlow::computeCost(){
-	
-//Scheme 1
-/*
-for(int y = winRadius; y < HEIGHT - winRadius; y++){
-		for(int x = winRadius; x < WIDTH - winRadius; x++){
-
-			float newx = x+imgRotation.at<Vec2f>(y,x)[0];
-			float newy = y+imgRotation.at<Vec2f>(y,x)[1];
-			float distx = newx - EpipoleLeft.at<float>(0);
-			float disty = newy - EpipoleLeft.at<float>(1);
-			float L = sqrt(distx*distx + disty*disty);			
-			
-		
-			for(int w = 0; w < DISP_RANGE ; w++){
-				float d = L * ((float)Vmax*(float)w/DISP_RANGE)/(1.0-((float)Vmax*(float)w/DISP_RANGE));
-				int xx = (newx + d*translationLeft.at<Vec2f>(newy,newx)[0]);
-				int yy = (newy + d*translationLeft.at<Vec2f>(newy,newx)[1]);
-				for(int neiY = -winRadius ; neiY <= winRadius; neiY++){				
-					for(int neiX = -winRadius; neiX <= winRadius; neiX++){
-
-				
-						if(((xx+neiX)>=winRadius) && ((yy+neiY)>=winRadius) && (xx+neiX)<(WIDTH-winRadius) && (yy+neiY)< (HEIGHT-winRadius)){	
-							
-							cost.at<SGM::VecDf>(y,x)[w] += fabs(derivativeFlowLeftLast.at<float>(y+neiY,x+neiX) - derivativeFlowLeft.at<float>(yy+neiY,xx+neiX))						
-							+ (float)CENSUS_W * computeHammingDist(censusImageLeftLast.at<uchar>(y+neiY,x+neiX), censusImageLeft.at<uchar>(yy+neiY,xx+neiX));
-							
-										
-						}else{
-							disFlag.at<uchar>(y,x)=static_cast<uchar>(DISFLAG);
-						}
-				
-					}
-				}
-			}
-		}
-	}
-*/
-
-//Scheme 2
 	for(int y = winRadius; y < HEIGHT - winRadius; y++){
 		for(int x = winRadius; x < WIDTH - winRadius; x++){
 
 			for(int w = 0; w < DISP_RANGE ; w++){
-			//for(int d_st = 0; d < DISP_RANGE; d++){ //use disp. range from stereo //STEREO_FLOW
 				
 				for(int neiY = y - winRadius ; neiY <= y + winRadius; neiY++){				
 					for(int neiX = x - winRadius; neiX <= x + winRadius; neiX++){
@@ -1129,15 +1169,11 @@ for(int y = winRadius; y < HEIGHT - winRadius; y++){
 						
 
 						float L = sqrt(distx*distx + disty*disty);
-						//float w = d_st*computeAlpha(neix,neiy,alpha); //STEREO_FLOW
 						float d = L * ((float)Vmax*(float)w/DISP_RANGE)/(1.0-((float)Vmax*(float)w/DISP_RANGE));
 						
 						
 						int xx = round(newx + d*translationLeft.at<Vec2f>(newy,newx)[0]);
 						int yy = round(newy + d*translationLeft.at<Vec2f>(newy,newx)[1]);
-
-						//if(inScope(neiX + d_st,neiY))				       //STEREO_FLOW
-						//	cost.at<...>(y,x)[d_st] += STEREO_COST(neiX,neiY,d_st) //STEREO_FLOW
 
 						if((xx>=winRadius) && (yy>=winRadius) && xx<(WIDTH-winRadius) && yy< (HEIGHT-winRadius)){	
 							
@@ -1146,6 +1182,7 @@ for(int y = winRadius; y < HEIGHT - winRadius; y++){
 										
 						}else{
 							disFlag.at<uchar>(y,x)=static_cast<uchar>(DISFLAG);
+							cost.at<SGM::VecDf>(y,x)[w] = 100000;
 						}
 				
 					}
@@ -1158,27 +1195,39 @@ for(int y = winRadius; y < HEIGHT - winRadius; y++){
 	for(int y = 0; y < winRadius; y++){
 		for(int x = 0; x < WIDTH; x++){
 			disFlag.at<uchar>(y,x)=static_cast<uchar>(DISFLAG);
+			for(int w = 0; w < DISP_RANGE ; w++){
+				cost.at<SGM::VecDf>(y,x)[w] = 0;
+			}
 		}
 	}
 	for(int y = HEIGHT - 1; y > HEIGHT - 1 - winRadius; y--){
 		for(int x = 0; x < WIDTH; x++){
 			disFlag.at<uchar>(y,x)=static_cast<uchar>(DISFLAG);
+			for(int w = 0; w < DISP_RANGE ; w++){
+				cost.at<SGM::VecDf>(y,x)[w] = 0;
+			}
 		}
 	}
 
 	for(int x = 0; x < winRadius; x++){
 		for(int y = 0; y < HEIGHT; y++){
 			disFlag.at<uchar>(y,x)=static_cast<uchar>(DISFLAG);
+			for(int w = 0; w < DISP_RANGE ; w++){
+				cost.at<SGM::VecDf>(y,x)[w] = 0;
+			}
 		}
 	}
 
 	for(int x = WIDTH - 1; x > WIDTH -1 - winRadius; x--){
 		for(int y = 0; y < HEIGHT; y++){
 			disFlag.at<uchar>(y,x)=static_cast<uchar>(DISFLAG);
+			for(int w = 0; w < DISP_RANGE ; w++){
+				cost.at<SGM::VecDf>(y,x)[w] = 0;
+			}
 		}
 	}
 
-//Set non-full costs to zero
+	/*//Set non-full costs to zero (OBSOLETE)
 	for(int y = winRadius; y < HEIGHT - winRadius; y++){
 		for(int x = winRadius; x < WIDTH - winRadius; x++){
 			if(disFlag.at<uchar>(y,x) == static_cast<uchar>(DISFLAG)){	
@@ -1187,45 +1236,17 @@ for(int y = winRadius; y < HEIGHT - winRadius; y++){
 				}
 			}
 		}
-	}
-
-	
-
-/*	for(int x = winRadius; x < WIDTH - winRadius; x++){
-		for(int y = winRadius; y < HEIGHT - winRadius; y++){
-			//if(disFlag.at<uchar>(y,x) != static_cast<uchar>(DISFLAG)){
-				for(int w = 1; w < DISP_RANGE; w++){
-					//if(cost.at<SGM::VecDf>(y,x)[w] > 10000){printf("cost.at<SGM::VecDf>(%d,%d)[%d]: %f\n",y,x,w,cost.at<SGM::VecDf>(y,x)[w]);}
-					if(cost.at<SGM::VecDf>(y,x)[w] == 0.0){cost.at<SGM::VecDf>(y,x)[w] = cost.at<SGM::VecDf>(y,x)[w-1];}
-				}
-			//}
-		}
-	}
-*/
+	}*/
 }
 
 void SGMFlow::postProcess(cv::Mat &disparity){
-
+/*	//deprecated
 	for(int x = 0; x < WIDTH; x++){
 		for(int y = 0; y < HEIGHT; y++){
 			if(disFlag.at<uchar>(y,x) == static_cast<uchar>(DISFLAG)){disparity.at<uchar>(y,x)=static_cast<uchar>(0);}
 		}
 	}
-
-/*	for(int x = 0; x < WIDTH; x++){
-		for(int y = 0; y < HEIGHT; y++){
-			if(disFlag.at<uchar>(y,x) != static_cast<uchar>(DISFLAG)){
-			if((short)disparity.at<uchar>(y,x) >= 39){
-			
-				std::cout<<"x: "<<x<<" y:"<<y<<std::endl;
-				std::cout<<accumulatedCost.at<SGM::VecDf>(y,x)<<std::endl;
-			}
-		}
-		}
-	}
-*/
-//std::cout<<cost.at<SGM::VecDf>(320,1098)<<std::endl;
-}
+*/}
 
 void SGMFlow::writeDerivative(){
 	imwrite("../derivativeFlowLeft.jpg",derivativeFlowLeft);
@@ -1242,89 +1263,49 @@ void SGMFlow::copyDisflag(cv::Mat &M){
 void SGMStereoFlow::computeCost(){	
 	for(int y = winRadius; y < HEIGHT - winRadius; y++){
 		for(int x = winRadius; x < WIDTH - winRadius; x++){
-
 			for(int d_st = 0; d_st < DISP_RANGE; d_st++){ //use disp. range from stereo
-				
 				for(int neiY = y - winRadius ; neiY <= y + winRadius; neiY++){				
 					for(int neiX = x - winRadius; neiX <= x + winRadius; neiX++){
-						//apply image rotation
-						float newx = neiX+imgRotation.at<Vec2f>(neiY,neiX)[0];
-						float newy = neiY+imgRotation.at<Vec2f>(neiY,neiX)[1];
-						float distx = newx - EpipoleLeft.at<float>(0);
-						float disty = newy - EpipoleLeft.at<float>(1);
-						
-						//compute flow-d from stereo-d using alpha
-						float L = sqrt(distx*distx + disty*disty);
-						float w = d_st*(neiX*ransacAlpha[0]+neiY*ransacAlpha[1]+ransacAlpha[2]);
-						float wMax = DISP_RANGE*(neiX*ransacAlpha[0]+neiY*ransacAlpha[1]+ransacAlpha[2]);
-						float d_fl = L * ((float)Vmax*(float)w/wMax)/(1.0-((float)Vmax*(float)w/DISP_RANGE));
-						
-						//projected flow point
-						int xx = round(newx + d_fl*translationLeft.at<Vec2f>(newy,newx)[0]);
-						int yy = round(newy + d_fl*translationLeft.at<Vec2f>(newy,newx)[1]);
-						
+												
 						cost.at<SGM::VecDf>(y,x)[d_st] += fabs(derivativeStereoLeft.at<float>(neiY, neiX)- 
 										derivativeStereoRight.at<float>(neiY, neiX - d_st)) 
 							+ CENSUS_W * computeHammingDist(censusImageLeft.at<uchar>(neiY, neiX), 
 										censusImageRight.at<uchar>(neiY, neiX - d_st));
 
-						if((xx>=winRadius) && (yy>=winRadius) && xx<(WIDTH-winRadius) && yy< (HEIGHT-winRadius)){	
+						if(disFlag.at<uchar>(y,x) != static_cast<uchar>(DISFLAG)){//don't add flow cost for flagged pixels
+							//apply image rotation
+							float newx = neiX+imgRotation.at<Vec2f>(neiY,neiX)[0];
+							float newy = neiY+imgRotation.at<Vec2f>(neiY,neiX)[1];
+							float distx = newx - EpipoleLeft.at<float>(0);
+							float disty = newy - EpipoleLeft.at<float>(1);
 							
-							cost.at<SGM::VecDf>(y,x)[d_st] += fabs(derivativeFlowLeftLast.at<float>(neiY,neiX) - 
-											derivativeFlowLeft.at<float>(yy,xx))
-								+ (float)CENSUS_W * computeHammingDist(censusImageLeftLast.at<uchar>(neiY, neiX), 
-											censusImageLeft.at<uchar>(yy, xx));
-										
-						}else{
-							disFlag.at<uchar>(y,x)=static_cast<uchar>(DISFLAG);
+							//compute flow-d from stereo-d using alpha
+							float L = sqrt(distx*distx + disty*disty);
+							float w = d_st*(neiX*ransacAlpha[0]+neiY*ransacAlpha[1]+ransacAlpha[2]);
+							//float wMax = DISP_RANGE*(neiX*ransacAlpha[0]+neiY*ransacAlpha[1]+ransacAlpha[2]);
+							float d_fl = L * w/(1.0-w);
+							
+							//projected flow point
+							int xx = round(newx + d_fl*translationLeft.at<Vec2f>(newy,newx)[0]);
+							int yy = round(newy + d_fl*translationLeft.at<Vec2f>(newy,newx)[1]);
+
+
+							if((xx>=winRadius) && (yy>=winRadius) && xx<(WIDTH-winRadius) && yy< (HEIGHT-winRadius)){
+								cost.at<SGM::VecDf>(y,x)[d_st] += fabs(derivativeFlowLeftLast.at<float>(neiY,neiX)
+									- derivativeFlowLeft.at<float>(yy,xx))
+									+ (float)CENSUS_W * computeHammingDist(censusImageLeftLast.at<uchar>(neiY, neiX), 
+									censusImageLeft.at<uchar>(yy, xx));
+							}
 						}
-				
-					}
-				}
-			}
-		}
-	}
-
-		
-	//Set flag for image boundaries
-	for(int y = 0; y < winRadius; y++){
-		for(int x = 0; x < WIDTH; x++){
-			disFlag.at<uchar>(y,x)=static_cast<uchar>(DISFLAG);
-		}
-	}
-	for(int y = HEIGHT - 1; y > HEIGHT - 1 - winRadius; y--){
-		for(int x = 0; x < WIDTH; x++){
-			disFlag.at<uchar>(y,x)=static_cast<uchar>(DISFLAG);
-		}
-	}
-
-	for(int x = 0; x < winRadius; x++){
-		for(int y = 0; y < HEIGHT; y++){
-			disFlag.at<uchar>(y,x)=static_cast<uchar>(DISFLAG);
-		}
-	}
-
-	for(int x = WIDTH - 1; x > WIDTH -1 - winRadius; x--){
-		for(int y = 0; y < HEIGHT; y++){
-			disFlag.at<uchar>(y,x)=static_cast<uchar>(DISFLAG);
-		}
-	}
-
-	//Set non-full costs to zero
-	for(int y = winRadius; y < HEIGHT - winRadius; y++){
-		for(int x = winRadius; x < WIDTH - winRadius; x++){
-			if(disFlag.at<uchar>(y,x) == static_cast<uchar>(DISFLAG)){	
-				for(int w = 0; w < DISP_RANGE ; w++){
-					cost.at<SGM::VecDf>(y,x)[w] = 0.0;
-				}
-			}
-		}
-	}
-
-}
+					}//for(int neiX)
+				}//for(int neiY)
+			}//for(int d_st)
+		}//for(int x)
+	}//for(int y)
+}//computeCost()
 
 void SGMStereoFlow::postProcess(cv::Mat &disparity)
-{
+{/*	//-- no post-processing needed currently
 	//Set flagged disparities to zero
 	for(int y = winRadius; y < HEIGHT - winRadius; y++){
 		for(int x = winRadius; x < WIDTH - winRadius; x++){
@@ -1333,4 +1314,4 @@ void SGMStereoFlow::postProcess(cv::Mat &disparity)
 			}
 		}
 	}
-}
+*/}

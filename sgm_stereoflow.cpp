@@ -7,7 +7,7 @@
 #include <vector>
 
 //-- macros: STEREO|FLOW|STEREOFLOW|DRAWEPIPOLES
-#define STEREOFLOW
+#define FLOW
 //#define DRAWEPIPOLES
 
 void computeEpipoles(std::vector<cv::Vec3f> &lines, cv::Mat &x_sol);
@@ -17,11 +17,11 @@ int main(int argc, char *argv[]){
 //-- Read input images
 	cv::Mat imageLeft, imageRight, imageLeftLast;
 	cv::Mat grayLeft, grayRight, grayLeftLast;
-	grayLeft=cv::imread("/home/johann/TUM/17S/Seminar-HWSWCodesign/KITTI/training/image_0/000003_11.png",CV_LOAD_IMAGE_GRAYSCALE);
-	grayRight=cv::imread("/home/johann/TUM/17S/Seminar-HWSWCodesign/KITTI/training/image_1/000003_11.png",CV_LOAD_IMAGE_GRAYSCALE);
-	grayLeftLast=cv::imread("/home/johann/TUM/17S/Seminar-HWSWCodesign/KITTI/training/image_0/000003_10.png",CV_LOAD_IMAGE_GRAYSCALE);
-	imageLeftLast=cv::imread("/home/johann/TUM/17S/Seminar-HWSWCodesign/KITTI/training/colored_0/000003_10.png",CV_LOAD_IMAGE_COLOR);
-	imageLeft=cv::imread("/home/johann/TUM/17S/Seminar-HWSWCodesign/KITTI/training/colored_0/000003_11.png",CV_LOAD_IMAGE_COLOR);
+	grayLeft=cv::imread("/home/johann/TUM/17S/Seminar-HWSWCodesign/KITTI/training/image_0/000000_11.png",CV_LOAD_IMAGE_GRAYSCALE);
+	grayRight=cv::imread("/home/johann/TUM/17S/Seminar-HWSWCodesign/KITTI/training/image_1/000000_11.png",CV_LOAD_IMAGE_GRAYSCALE);
+	grayLeftLast=cv::imread("/home/johann/TUM/17S/Seminar-HWSWCodesign/KITTI/training/image_0/000000_10.png",CV_LOAD_IMAGE_GRAYSCALE);
+	imageLeftLast=cv::imread("/home/johann/TUM/17S/Seminar-HWSWCodesign/KITTI/training/colored_0/000000_10.png",CV_LOAD_IMAGE_COLOR);
+	imageLeft=cv::imread("/home/johann/TUM/17S/Seminar-HWSWCodesign/KITTI/training/colored_0/000000_11.png",CV_LOAD_IMAGE_COLOR);
 	//cv::cvtColor(imageLeft,grayLeft,CV_BGR2GRAY);
 	//cv::cvtColor(imageRight,grayRight,CV_BGR2GRAY);
 	//cv::cvtColor(imageLeftLast,grayLeftLast,CV_BGR2GRAY);
@@ -44,7 +44,7 @@ int main(int argc, char *argv[]){
 	sgmstereo.runSGM(disparity);
 	imwrite("../disparity.jpg", disparity);
 	imshow("disparity", disparity);
-	sgmstereo.writeDerivative();
+	//sgmstereo.writeDerivative();
 #endif
 
 #if defined FLOW || defined STEREOFLOW
@@ -167,7 +167,7 @@ int main(int argc, char *argv[]){
 	sgmflow.copyDisflag(disFlowFlag);
 	imwrite("../disparityFlow.jpg", disparityFlow_);
 	imwrite("../aviFlowFlag.jpg", disFlowFlag);
-	sgmflow.writeDerivative();
+	//sgmflow.writeDerivative();
 #endif
 
 #ifdef STEREOFLOW

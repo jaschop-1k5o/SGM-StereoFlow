@@ -5,26 +5,51 @@
 #include "opencv2/xfeatures2d/nonfree.hpp"
 #include "opencv2/stitching/detail/matchers.hpp"
 #include <vector>
+#include <string>
+#include <sstream>
 
 //-- macros: STEREO|FLOW|STEREOFLOW|DRAWEPIPOLES
+#define STEREO
 #define FLOW
-//#define DRAWEPIPOLES
+#define STEREOFLOW
 
 void computeEpipoles(std::vector<cv::Vec3f> &lines, cv::Mat &x_sol);
 
 int main(int argc, char *argv[]){
+//-- set some default arguments for easy testing
+	//-- local path to KITTI directory
+	std::string kittiDir = "/home/johann/TUM/17S/Seminar-HWSWCodesign/KITTI";
+	//-- image directory paths relative to KITTI directory
+	std::string colorLeftDir = "training/colored_0";
+	std::string colorRightDir = "training/colored_1"; //currently not used
+	std::string grayLeftDir = "training/image_0";
+	std::string grayRightDir = "training/image_1";
+	//-- KITTI image ID for imageLeft & imageRight
+	std::string nowID = "000000_11";
+	//-- KITTI image ID for imageLeftLast
+	std::string lastID = "000000_10";
+//-- parse arguments (TODO)
 
 //-- Read input images
-	cv::Mat imageLeft, imageRight, imageLeftLast;
+	cv::Mat imageLeft, imageLeftLast;
 	cv::Mat grayLeft, grayRight, grayLeftLast;
-	grayLeft=cv::imread("/home/johann/TUM/17S/Seminar-HWSWCodesign/KITTI/training/image_0/000000_11.png",CV_LOAD_IMAGE_GRAYSCALE);
-	grayRight=cv::imread("/home/johann/TUM/17S/Seminar-HWSWCodesign/KITTI/training/image_1/000000_11.png",CV_LOAD_IMAGE_GRAYSCALE);
-	grayLeftLast=cv::imread("/home/johann/TUM/17S/Seminar-HWSWCodesign/KITTI/training/image_0/000000_10.png",CV_LOAD_IMAGE_GRAYSCALE);
-	imageLeftLast=cv::imread("/home/johann/TUM/17S/Seminar-HWSWCodesign/KITTI/training/colored_0/000000_10.png",CV_LOAD_IMAGE_COLOR);
-	imageLeft=cv::imread("/home/johann/TUM/17S/Seminar-HWSWCodesign/KITTI/training/colored_0/000000_11.png",CV_LOAD_IMAGE_COLOR);
-	//cv::cvtColor(imageLeft,grayLeft,CV_BGR2GRAY);
-	//cv::cvtColor(imageRight,grayRight,CV_BGR2GRAY);
-	//cv::cvtColor(imageLeftLast,grayLeftLast,CV_BGR2GRAY);
+	//build filepaths via stringstream
+	std::stringstream path;
+	path.str("");path<<kittiDir<<"/"<<grayLeftDir<<"/"<<nowID<<".png";
+	grayLeft=cv::imread(path.str(),CV_LOAD_IMAGE_GRAYSCALE);
+
+	path.str("");path<<kittiDir<<"/"<<grayRightDir<<"/"<<nowID<<".png";
+	grayRight=cv::imread(path.str(),CV_LOAD_IMAGE_GRAYSCALE);
+
+	path.str("");path<<kittiDir<<"/"<<grayLeftDir<<"/"<<lastID<<".png";
+	grayLeftLast=cv::imread(path.str(),CV_LOAD_IMAGE_GRAYSCALE);
+
+	path.str("");path<<kittiDir<<"/"<<colorLeftDir<<"/"<<nowID<<".png";
+	imageLeft=cv::imread(path.str(),CV_LOAD_IMAGE_COLOR);
+
+	path.str("");path<<kittiDir<<"/"<<colorLeftDir<<"/"<<lastID<<".png";
+	imageLeftLast=cv::imread(path.str(),CV_LOAD_IMAGE_COLOR);
+
 #ifdef DRAWEPIPOLES
 //-- colors for image drawing
 	const Scalar colorBlue(225.0, 0.0, 0.0, 0.0);
@@ -39,11 +64,11 @@ int main(int argc, char *argv[]){
 
 #ifdef STEREO
 //-- Compute the stereo disparity
-	cv::Mat disparity(grayLeft.rows, grayLeft.cols, CV_8UC1);
+	cv::Mat disparityStereo_(grayLeft.rows, grayLeft.cols, CV_8UC1);
 	SGMStereo sgmstereo(grayLeftLast, grayLeft, grayRight, PENALTY1, PENALTY2, winRadius);
-	sgmstereo.runSGM(disparity);
-	imwrite("../disparity.jpg", disparity);
-	imshow("disparity", disparity);
+	sgmstereo.runSGM(disparityStereo_);
+	imwrite("../disparityStereo.jpg", disparityStereo_);
+	imshow("disparityStereo_", disparityStereo_);
 	//sgmstereo.writeDerivative();
 #endif
 
@@ -80,7 +105,7 @@ int main(int argc, char *argv[]){
 	std::vector<Point2f> temp_keypoints_2;
 
  	for( int i = 0; i < matches1to2.size(); i++ ){ 
-		if( matches1to2[i].distance < 4*min_dist ){ 
+		if( matches1to2[i].distance < 16*min_dist ){ 
 			good_matches.push_back( matches1to2[i]);
 			temp_keypoints_1.push_back((Point2f)keypoints_1[matches1to2[i].queryIdx].pt);
 			temp_keypoints_2.push_back((Point2f)keypoints_2[matches1to2[i].trainIdx].pt);
@@ -115,13 +140,16 @@ int main(int argc, char *argv[]){
 		}
 	}
 
+	//updated 23.11.2017. The fundamental matrix must be recomputed again with CV_FM_8POINT by qualified matchings.
+        cv::Mat newFmat = findFundamentalMat(new_keypoints_1, new_keypoints_2, CV_FM_8POINT);
+        std::cout<<"newFmat"<<newFmat<<std::endl;
+
 	std::cout<<"num_inliers : "<<num_inliers<<std::endl;
 	std::vector<cv::Vec3f> lines_1;
-	std::vector<cv::Vec3f> lines_2;
-	
+	std::vector<cv::Vec3f> lines_2;	
 
-	cv::computeCorrespondEpilines(new_keypoints_2, 2, Fmat, lines_1);
-	cv::computeCorrespondEpilines(new_keypoints_1, 1, Fmat, lines_2);	
+	cv::computeCorrespondEpilines(new_keypoints_2, 2, newFmat, lines_1);
+	cv::computeCorrespondEpilines(new_keypoints_1, 1, newFmat, lines_2);	
 
 	std::vector<Point2f> des_points_1;
 	std::vector<Point2f> des_points_2;
@@ -162,29 +190,32 @@ int main(int argc, char *argv[]){
 	SGMFlow sgmflow(grayLeftLast, grayLeft, grayRight, PENALTY1, PENALTY2, winRadius, Epipole_1, Epipole_2, Fmat);
 	sgmflow.runSGM(disparityFlow_);
 	imshow("disparityFlow_",disparityFlow_);	
-	imshow("imageLeftLast_",imageLeftLast);
-	cv::Mat disFlowFlag;
-	sgmflow.copyDisflag(disFlowFlag);
+	cv::Mat disFlowFlag_;
+	sgmflow.copyDisflag(disFlowFlag_);
 	imwrite("../disparityFlow.jpg", disparityFlow_);
-	imwrite("../aviFlowFlag.jpg", disFlowFlag);
+	imwrite("../disFlowFlag.jpg", disFlowFlag_);
 	//sgmflow.writeDerivative();
 #endif
 
 #ifdef STEREOFLOW
 //-- Compute the stereoflow disparity
-	cv::Mat disparityStereo, disparityFlow;
-#ifndef FLOW
-	cv::Mat disFlowFlag;
+	cv::Mat disparityStereo, disparityFlow, disFlowFlag;
+//-- Acquire results of Stereo&Flow computation 
+#ifdef STEREO
+	disparityStereo = disparityStereo_;
+#else
+	disparityStereo=cv::imread("../input/disparityStereo.jpg",CV_LOAD_IMAGE_GRAYSCALE );
 #endif
-	disparityFlow=cv::imread("/home/johann/TUM/17S/Seminar-HWSWCodesign/outputs/disparityFlow.jpg",CV_LOAD_IMAGE_GRAYSCALE );
-	disparityStereo=cv::imread("/home/johann/TUM/17S/Seminar-HWSWCodesign/outputs/disparity.jpg",CV_LOAD_IMAGE_GRAYSCALE );
-	disFlowFlag=cv::imread("/home/johann/TUM/17S/Seminar-HWSWCodesign/outputs/aviFlowFlag.jpg",CV_LOAD_IMAGE_GRAYSCALE );	
+#ifdef FLOW
+	disparityFlow = disparityFlow_;
+	disFlowFlag = disFlowFlag_;
+#else
+	disparityFlow=cv::imread("../input/disparityFlow.jpg",CV_LOAD_IMAGE_GRAYSCALE );
+	disFlowFlag=cv::imread("../input/disFlowFlag.jpg",CV_LOAD_IMAGE_GRAYSCALE );	
+#endif
 	SGMStereoFlow sgmsf(grayLeftLast, grayLeft, grayRight, PENALTY1, PENALTY2, winRadius, Epipole_1, Epipole_2, Fmat);
-	sgmsf.setAlphaRansac(disparityStereo, disparityFlow, disFlowFlag);
 
-	/*-- disparity with outliers not available right now
-	cv::Mat disparityStereo_wOutliers = cv::imread("/home/sanyu/spsstereo/sanyu_local/sgm_lib/results/stereoEvi/disparity106_evi30000.jpg",CV_LOAD_IMAGE_GRAYSCALE );
-	cv::Mat disparityFlow_wOutliers = cv::imread("/home/sanyu/spsstereo/sanyu_local/sgm_lib/results/flow/Flow106_8paths_40D_wo.jpg",CV_LOAD_IMAGE_GRAYSCALE );*/
+	sgmsf.setAlphaRansac(disparityStereo, disparityFlow, disFlowFlag);
 	sgmsf.setEvidence(disparityStereo, disparityFlow, disFlowFlag);
 
 	cv::Mat disparityStereoFlow(grayLeft.rows, grayLeft.cols, CV_8UC1);

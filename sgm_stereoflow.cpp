@@ -17,38 +17,50 @@ void computeEpipoles(std::vector<cv::Vec3f> &lines, cv::Mat &x_sol);
 
 int main(int argc, char *argv[]){
 //-- set some default arguments for easy testing
-	//-- local path to KITTI directory
+	//-- path to local KITTI directory
 	std::string kittiDir = "/home/johann/TUM/17S/Seminar-HWSWCodesign/KITTI";
 	//-- image directory paths relative to KITTI directory
+	//--- colored images (left & right camera)
 	std::string colorLeftDir = "training/colored_0";
 	std::string colorRightDir = "training/colored_1"; //currently not used
+	//---grayscale images (left & right camera)
 	std::string grayLeftDir = "training/image_0";
 	std::string grayRightDir = "training/image_1";
-	//-- KITTI image ID for imageLeft & imageRight
-	std::string nowID = "000000_11";
-	//-- KITTI image ID for imageLeftLast
-	std::string lastID = "000000_10";
-//-- parse arguments (TODO)
+	//-- KITTI image ID, filenames of current/last frame are ${imgID}_11/${imgID}_10 resp.
+	std::string imgID = "000000";
+//-- parse arguments (RUDIMENTARY)
+	if(argc>=2){
+		imgID = argv[1];
+	}
+
+	std::cout<<"evaluating image "<<argv[1]<<std::endl;
 
 //-- Read input images
 	cv::Mat imageLeft, imageLeftLast;
 	cv::Mat grayLeft, grayRight, grayLeftLast;
 	//build filepaths via stringstream
 	std::stringstream path;
-	path.str("");path<<kittiDir<<"/"<<grayLeftDir<<"/"<<nowID<<".png";
+	path.str("");path<<kittiDir<<"/"<<grayLeftDir<<"/"<<imgID<<"_11.png";
 	grayLeft=cv::imread(path.str(),CV_LOAD_IMAGE_GRAYSCALE);
 
-	path.str("");path<<kittiDir<<"/"<<grayRightDir<<"/"<<nowID<<".png";
+	path.str("");path<<kittiDir<<"/"<<grayRightDir<<"/"<<imgID<<"_11.png";
 	grayRight=cv::imread(path.str(),CV_LOAD_IMAGE_GRAYSCALE);
 
-	path.str("");path<<kittiDir<<"/"<<grayLeftDir<<"/"<<lastID<<".png";
+	path.str("");path<<kittiDir<<"/"<<grayLeftDir<<"/"<<imgID<<"_10.png";
 	grayLeftLast=cv::imread(path.str(),CV_LOAD_IMAGE_GRAYSCALE);
 
-	path.str("");path<<kittiDir<<"/"<<colorLeftDir<<"/"<<nowID<<".png";
+	path.str("");path<<kittiDir<<"/"<<colorLeftDir<<"/"<<imgID<<"_11.png";
 	imageLeft=cv::imread(path.str(),CV_LOAD_IMAGE_COLOR);
 
-	path.str("");path<<kittiDir<<"/"<<colorLeftDir<<"/"<<lastID<<".png";
+	path.str("");path<<kittiDir<<"/"<<colorLeftDir<<"/"<<imgID<<"_10.png";
 	imageLeftLast=cv::imread(path.str(),CV_LOAD_IMAGE_COLOR);
+
+//--check if images were loaded correctly
+	if(grayLeft.cols<=0 || grayLeft.rows<=0 || grayRight.cols<=0 || grayRight.rows<=0 ||
+		grayLeftLast.cols<=0 || grayLeftLast.rows<=0 || imageLeft.cols<=0 || imageLeft.rows<=0){		 
+		std::cout<<"ERROR: some images could not be loaded!"<<std::endl;
+		return -1;
+	}
 
 #ifdef DRAWEPIPOLES
 //-- colors for image drawing
@@ -64,11 +76,12 @@ int main(int argc, char *argv[]){
 
 #ifdef STEREO
 //-- Compute the stereo disparity
+	std::cout<<std::endl<<"COMPUTING STEREO DISPARITY"<<std::endl;
 	cv::Mat disparityStereo_(grayLeft.rows, grayLeft.cols, CV_8UC1);
 	SGMStereo sgmstereo(grayLeftLast, grayLeft, grayRight, PENALTY1, PENALTY2, winRadius);
 	sgmstereo.runSGM(disparityStereo_);
 	imwrite("../disparityStereo.jpg", disparityStereo_);
-	imshow("disparityStereo_", disparityStereo_);
+	//imshow("disparityStereo_", disparityStereo_);
 	//sgmstereo.writeDerivative();
 #endif
 
@@ -186,10 +199,11 @@ int main(int argc, char *argv[]){
 
 #ifdef FLOW
 //-- Compute the flow disparity
+	std::cout<<std::endl<<"COMPUTING FLOW DISPARITY"<<std::endl;
 	cv::Mat disparityFlow_(grayLeft.rows, grayLeft.cols, CV_8UC1);
 	SGMFlow sgmflow(grayLeftLast, grayLeft, grayRight, PENALTY1, PENALTY2, winRadius, Epipole_1, Epipole_2, Fmat);
 	sgmflow.runSGM(disparityFlow_);
-	imshow("disparityFlow_",disparityFlow_);	
+	//imshow("disparityFlow_",disparityFlow_);
 	cv::Mat disFlowFlag_;
 	sgmflow.copyDisflag(disFlowFlag_);
 	imwrite("../disparityFlow.jpg", disparityFlow_);
@@ -213,6 +227,7 @@ int main(int argc, char *argv[]){
 	disparityFlow=cv::imread("../input/disparityFlow.jpg",CV_LOAD_IMAGE_GRAYSCALE );
 	disFlowFlag=cv::imread("../input/disFlowFlag.jpg",CV_LOAD_IMAGE_GRAYSCALE );	
 #endif
+	std::cout<<std::endl<<"COMPUTING STEREO-FLOW DISPARITY"<<std::endl;
 	SGMStereoFlow sgmsf(grayLeftLast, grayLeft, grayRight, PENALTY1, PENALTY2, winRadius, Epipole_1, Epipole_2, Fmat);
 
 	sgmsf.setAlphaRansac(disparityStereo, disparityFlow, disFlowFlag);
@@ -222,7 +237,7 @@ int main(int argc, char *argv[]){
 	sgmsf.runSGM(disparityStereoFlow);
 
 	
-	imshow("disparityStereoFlow",disparityStereoFlow);
+	//imshow("disparityStereoFlow",disparityStereoFlow);
 	imwrite("../disparityStereoFlow.jpg",disparityStereoFlow);
 #endif
 	waitKey(0);

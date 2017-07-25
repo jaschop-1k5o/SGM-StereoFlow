@@ -5,10 +5,10 @@
 #include "opencv2/highgui.hpp"
 #include <limits>
 #include <iostream>
-#define DISP_RANGE 100
-#define DIS_FACTOR 6	
+#define DISP_RANGE 130
+#define DIS_FACTOR 1
 #define CENSUS_W 5
-#define DISFLAG 100
+#define DISFLAG 255
 #define Disthreshold 10000
 #define Outlier 255
 #define Vmax 0.3
@@ -47,7 +47,7 @@ class SGM
 		virtual void computeDerivative();
 		virtual void computeCost();
 		virtual void computeCostRight();
-		virtual void postProcess(cv::Mat &disparity);
+		virtual void postProcess(cv::Mat &disparityIn,cv::Mat &disparity);
 		virtual void resetDirAccumulatedCost();
 		virtual void consistencyCheck(cv::Mat disparityLeft, cv::Mat disparityRight, cv::Mat disparity);
 	public:
@@ -74,7 +74,7 @@ class SGMStereo : public SGM
 		virtual void computeDerivative();
 		virtual void computeCost();
 		virtual void computeCostRight();
-		virtual void postProcess(cv::Mat &disparity);
+		virtual void postProcess(cv::Mat &disparityIn,cv::Mat &disparity);
 		virtual void consistencyCheck(cv::Mat disparityLeft, cv::Mat disparityRight, cv::Mat disparity);
 	public:
 		SGMStereo(const cv::Mat &imgLeftLast_, const cv::Mat &imgLeft_, const cv::Mat &imgRight_, const int PENALTY1_, const int PENALTY2_, const int winRadius_);
@@ -97,7 +97,7 @@ class SGMFlow : public SGM
 		cv::Mat disFlag;
 		virtual void computeDerivative();
 		virtual void computeCost();
-		virtual void postProcess(cv::Mat &disparity);
+		virtual void postProcess(cv::Mat &disparityIn,cv::Mat &disparity);
 		void computeRotation();
 		void computeTranslation(cv::Mat &translation, cv::Mat &Epipole);
 		virtual void resetDirAccumulatedCost();
@@ -130,7 +130,7 @@ class SGMStereoFlow : public SGM
 		virtual void computeDerivative();
 		void computeRotation();
 		void computeTranslation(cv::Mat &translation, cv::Mat &Epipole);
-		virtual void postProcess(cv::Mat &disparity);
+		virtual void postProcess(cv::Mat &disparityIn,cv::Mat &disparity);
 	public:
 		SGMStereoFlow(const cv::Mat &imgLeftLast_, const cv::Mat &imgLeft_,const cv::Mat &imgRight_, const int PENALTY1_, const int PENALTY2_, const int winRadius_, 
 			cv::Mat &EpipoleLeftLast_, cv::Mat &EpipoleLeft_, cv::Mat &fundamentalMatrix_);

@@ -26,7 +26,7 @@ int main(int argc, char *argv[]){
 	//---grayscale images (left & right camera)
 	std::string grayLeftDir = "training/image_0";
 	std::string grayRightDir = "training/image_1";
-	//-- KITTI image ID, filenames of current/last frame are ${imgID}_11/${imgID}_10 resp.
+	//-- KITTI image ID, filenames of current/last frame are {imgID}_11/{imgID}_10 resp.
 	std::string imgID = "000000";
 //-- parse arguments (RUDIMENTARY)
 	if(argc>=2){
@@ -87,9 +87,7 @@ int main(int argc, char *argv[]){
 
 #if defined FLOW || defined STEREOFLOW
 //-- precomputation for flow analysis
-
-	std::cout<<"HEIGHT: "<<imageLeft.rows<<std::endl;
-	std::cout<<"WIDTH: "<<imageLeft.cols<<std::endl;
+	std::cout<<"Computing epipoles: ";
 
 	std::vector<KeyPoint> keypoints_1;
 	std::vector<KeyPoint> keypoints_2;
@@ -126,18 +124,10 @@ int main(int argc, char *argv[]){
 		}
   	}
 
-
-//-- Draw matching points
-	//cv::drawMatches(grayLeftLast, keypoints_1, grayLeft, keypoints_2, good_matches, outImg);
-	
-	
 	cv::Mat mask;
 	cv::Mat Fmat;
 	Fmat=findFundamentalMat(temp_keypoints_1, temp_keypoints_2, CV_FM_RANSAC , 3, 0.999 ,mask); //CV_FM_8POINT, CV_FM_RANSAC, CV_FM_LMEDS
-	std::cout<<Fmat<<std::endl;
 
-
-	
 	std::vector<Point2f> new_keypoints_1;
 	std::vector<Point2f> new_keypoints_2;
 
@@ -155,9 +145,7 @@ int main(int argc, char *argv[]){
 
 	//updated 23.11.2017. The fundamental matrix must be recomputed again with CV_FM_8POINT by qualified matchings.
         cv::Mat newFmat = findFundamentalMat(new_keypoints_1, new_keypoints_2, CV_FM_8POINT);
-        std::cout<<"newFmat"<<newFmat<<std::endl;
 
-	std::cout<<"num_inliers : "<<num_inliers<<std::endl;
 	std::vector<cv::Vec3f> lines_1;
 	std::vector<cv::Vec3f> lines_2;	
 
@@ -166,20 +154,15 @@ int main(int argc, char *argv[]){
 
 	std::vector<Point2f> des_points_1;
 	std::vector<Point2f> des_points_2;
-	
-	std::cout<<"new_keypoints_1.size() :"<<new_keypoints_1.size()<<std::endl;
-	std::cout<<"new_keypoints_2.size() :"<<new_keypoints_2.size()<<std::endl;
-	std::cout<<"mask.rows :"<<mask.rows<<std::endl;
-
 
 //-- Compute epipoles by least square
 	cv::Mat Epipole_1 = Mat::zeros(2, 1, CV_32F);
 	computeEpipoles(lines_1, Epipole_1);
-	std::cout<<"Epipole_1: "<<Epipole_1<<std::endl;
 
 	cv::Mat Epipole_2 = Mat::zeros(2, 1, CV_32F);
 	computeEpipoles(lines_2, Epipole_2);
-	std::cout<<"Epipole_2: "<<Epipole_2<<std::endl;
+
+	std::cout<<"done"<<std::endl;
 
 #ifdef DRAWEPIPOLES
 //-- draw epipolar lines on image 	

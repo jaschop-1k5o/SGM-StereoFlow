@@ -12,7 +12,6 @@ imgLeftLast(imgLeftLast_), imgLeft(imgLeft_), imgRight(imgRight_), PENALTY1(PENA
 	censusImageRight = Mat::zeros(HEIGHT, WIDTH, CV_8UC1);
 	censusImageLeftLast = Mat::zeros(HEIGHT, WIDTH, CV_8UC1);
 	cost = Mat::zeros(HEIGHT, WIDTH, CV_32FC(DISP_RANGE));
-	costRight = Mat::zeros(HEIGHT, WIDTH, CV_32FC(DISP_RANGE));
 	directCost = Mat::zeros(HEIGHT, WIDTH, CV_32SC(DISP_RANGE));
 	accumulatedCost = Mat::zeros(HEIGHT, WIDTH, CV_32SC(DISP_RANGE));
 std::cout<<"=========================================================="<<std::endl;
@@ -79,8 +78,6 @@ void SGM::createDisparity(cv::Mat &disparity){
 			for(int d = 0; d < DISP_RANGE; d++){
 				if(vec[d] < imax ){ imax = vec[d]; min_index = d;}
 			}
-			//std::cout<<"x: "<<x<<" y: "<<y<<" "<<imax<<" |";
-			//if(imax > Disthreshold){min_index = Outlier; /*std::cout<<"x: "<<x<<" y: "<<y<<" "<<imax<<" |";*/}
 			disparity.at<uchar>(y,x) = static_cast<uchar>(DIS_FACTOR*min_index);
 		}
 	}
@@ -97,28 +94,6 @@ void SGM::postProcess(cv::Mat &disparityIn, cv::Mat &disparity)
 	disparity = disparityIn;
 }
 
-void SGM::consistencyCheck(cv::Mat disparityLeft, cv::Mat disparityRight, cv::Mat disparity){}	
-
-void SGM::resetDirAccumulatedCost(){}
-
-
-void SGMFlow::resetDirAccumulatedCost(){
-/* OBSOLETE
-for (int x = 0 ; x < WIDTH; x++ ) {
-      		for ( int y = 0; y < HEIGHT; y++ ) {
-			if(disFlag.at<uchar>(y,x)==static_cast<uchar>(DISFLAG)){
-				for(int d = 0; d < DISP_RANGE; d++){
-            				directCost.at<SGM::VecDf>(y,x)[d] = 0.0;
-				}
-			}
-					      
-        	}
-      	}
-
-
-*/}
-
-
 void SGM::runSGM(cv::Mat &disparity){
 	std::cout<<"compute Census: ";
 	computeCensus(imgLeft , censusImageLeft);
@@ -134,45 +109,32 @@ void SGM::runSGM(cv::Mat &disparity){
 
 	std::cout<<"aggregation starts:"<<std::endl;
 	aggregation<1,0>(cost);
-	resetDirAccumulatedCost();
 	sumOverAllCost();
-
-std::cout<<accumulatedCost.at<SGM::VecDf>(250,126)<<std::endl;
 
 	aggregation<0,1>(cost);
-resetDirAccumulatedCost();
 	sumOverAllCost();
-
-std::cout<<accumulatedCost.at<SGM::VecDf>(250,126)<<std::endl;
 
 	aggregation<0,-1>(cost);
-resetDirAccumulatedCost();
 	sumOverAllCost();
-std::cout<<accumulatedCost.at<SGM::VecDf>(250,126)<<std::endl;
 
 	aggregation<-1,0>(cost);
-resetDirAccumulatedCost();
 	sumOverAllCost();
-std::cout<<accumulatedCost.at<SGM::VecDf>(250,126)<<std::endl;
 
-	/*aggregation<1,1>(cost);
-resetDirAccumulatedCost();
+/*	//---ENABLE FOR 8-PATH SGM
+	aggregation<1,1>(cost);
 	sumOverAllCost();
-std::cout<<accumulatedCost.at<SGM::VecDf>(250,126)<<std::endl;	
+
 	aggregation<-1,1>(cost);
-resetDirAccumulatedCost();
 	sumOverAllCost();
-std::cout<<accumulatedCost.at<SGM::VecDf>(250,126)<<std::endl;
+
 	aggregation<1,-1>(cost);
-resetDirAccumulatedCost();
 	sumOverAllCost();
-std::cout<<accumulatedCost.at<SGM::VecDf>(250,126)<<std::endl;
+
 	aggregation<-1,-1>(cost);
-resetDirAccumulatedCost();
 	sumOverAllCost();
 */
 
-/*
+/*	//---ENABLE FOR 16-PATH SGM
 	aggregation<2,1>();
 	sumOverAllCost();
 
@@ -200,91 +162,16 @@ resetDirAccumulatedCost();
 	cv::Mat disparityTemp(HEIGHT, WIDTH, CV_8UC1);
 	createDisparity(disparityTemp);
 	postProcess(disparityTemp, disparity);
-	//fastNlMeansDenoising(disparityTemp, disparity); //call moved to postProcess
-/*	cv::Mat disparityLeft(HEIGHT, WIDTH, CV_8UC1);
-	createDisparity(disparityLeft);
-	postProcess(disparityLeft);
-	imwrite("../disparityLeft.jpg", disparityLeft);
 
-
-for(int y = 0; y < HEIGHT ; y++){
-	for(int x = 0; x < WIDTH; x++){
-		for(int d = 0; d < DISP_RANGE; d++){
-			accumulatedCost.at<SGM::VecDf>(y,x)[d]=0.f;
-			directCost.at<SGM::VecDf>(y,x)[d]=0.f;
-		}
-	}
-}
-
-
-	std::cout<<"compute costRight"<<std::endl;
-	computeCostRight();
-	std::cout<<"done"<<std::endl;
-
-	std::cout<<"aggregation starts:"<<std::endl;
-	aggregation<1,0>(costRight);
-	resetDirAccumulatedCost();
-	sumOverAllCost();
-
-std::cout<<accumulatedCost.at<SGM::VecDf>(250,126)<<std::endl;
-
-	aggregation<0,1>(costRight);
-resetDirAccumulatedCost();
-	sumOverAllCost();
-
-std::cout<<accumulatedCost.at<SGM::VecDf>(250,126)<<std::endl;
-
-	aggregation<0,-1>(costRight);
-resetDirAccumulatedCost();
-	sumOverAllCost();
-std::cout<<accumulatedCost.at<SGM::VecDf>(250,126)<<std::endl;
-
-	aggregation<-1,0>(costRight);
-resetDirAccumulatedCost();
-	sumOverAllCost();
-std::cout<<accumulatedCost.at<SGM::VecDf>(250,126)<<std::endl;
-
-	aggregation<1,1>(costRight);
-resetDirAccumulatedCost();
-	sumOverAllCost();
-std::cout<<accumulatedCost.at<SGM::VecDf>(250,126)<<std::endl;	
-	aggregation<-1,1>(costRight);
-resetDirAccumulatedCost();
-	sumOverAllCost();
-std::cout<<accumulatedCost.at<SGM::VecDf>(250,126)<<std::endl;
-	aggregation<1,-1>(costRight);
-resetDirAccumulatedCost();
-	sumOverAllCost();
-std::cout<<accumulatedCost.at<SGM::VecDf>(250,126)<<std::endl;
-	aggregation<-1,-1>(costRight);
-resetDirAccumulatedCost();
-	sumOverAllCost();
-
-
-	cv::Mat disparityRight(HEIGHT, WIDTH, CV_8UC1);
-	createDisparity(disparityRight);
-	imshow("disparityRight", disparityRight);
-	imwrite("../disparityRight.jpg", disparityRight);
-	consistencyCheck(disparityLeft, disparityRight, disparity);
-*/
-
-/*	//-- files not available
-	cv::Mat disparityRight =cv::imread("/home/sanyu/spsstereo/sanyu_local/sgm_lib/disparityRight.jpg",CV_LOAD_IMAGE_GRAYSCALE);
-	cv::Mat disparityLeft =cv::imread("/home/sanyu/spsstereo/sanyu_local/sgm_lib/disparityLeft.jpg",CV_LOAD_IMAGE_GRAYSCALE);
-	consistencyCheck(disparityLeft, disparityRight, disparity);
-*/
 }
 
 void SGM::computeCost(){}
-
-void SGM::computeCostRight(){}
 
 SGM::~SGM(){
 	censusImageRight.release();
 	censusImageLeft.release();
 	censusImageLeftLast.release();	
 	cost.release();
-	costRight.release();
 	directCost.release();
 	accumulatedCost.release();
 }
@@ -640,79 +527,39 @@ void SGMStereo::computeDerivative(){
 	gradx.release();
 }
 
-void SGMStereo::calcHalfPixelRight() {
-
-	for(int y = 0; y < HEIGHT; ++y){
-		for (int x = 0; x < WIDTH; ++x) {
-			float centerValue = derivativeStereoRight.at<float>(y,x);
-			float leftHalfValue = x > 0 ? (centerValue + derivativeStereoRight.at<float>(y,x-1))/2 : centerValue;
-			float rightHalfValue = x < WIDTH - 1 ? (centerValue + derivativeStereoRight.at<float>(y,x+1))/2 : centerValue;
-			float minValue = std::min(leftHalfValue, rightHalfValue);
-			minValue = std::min(minValue, centerValue);
-			float maxValue = std::max(leftHalfValue, rightHalfValue);
-			maxValue = std::max(maxValue, centerValue);
-
-			halfPixelRightMin.at<float>(y,x)=minValue;
-			halfPixelRightMax.at<float>(y,x) = maxValue;
-			//std::cout<<halfPixelRightMin.at<float>(y,x)<<" "<<halfPixelRightMax.at<float>(y,x)<<std::endl;
-			//sleep(1);
-		}
-	}
-}
-
-void SGMStereo::consistencyCheck(cv::Mat disparityLeft, cv::Mat disparityRight, cv::Mat disparity){
-
-//based on right
-	for(int y = winRadius; y < HEIGHT - winRadius; y++){
-		for(int x = DISP_RANGE; x < WIDTH - winRadius - DISP_RANGE; x++){
-			unsigned short disparityRightValue =  static_cast<unsigned short>(disparityRight.at<uchar>(y,x));
-			unsigned short disparityLeftValue =  static_cast<unsigned short>(disparityLeft.at<uchar>(y,x + disparityRightValue));
-			disparity.at<uchar>(y,x) = static_cast<uchar>(disparityRightValue*3);
-			if(abs(disparityRightValue - disparityLeftValue) > disparityThreshold){
-				disparity.at<uchar>(y,x) = static_cast<uchar>(Dinvd);
-			}		
-		}
-	}
-
-}
-
-void SGMStereo::computeCostRight(){
-
-for(int y = winRadius; y < HEIGHT - winRadius; y++){
-	for(int x = winRadius; x < WIDTH - winRadius - DISP_RANGE; x++){
-		for(int d = 0; d < DISP_RANGE; d++){
-				
-				for(int neiX = x - winRadius; neiX <= x + winRadius; neiX++){
-					for(int neiY = y - winRadius; neiY <= y + winRadius; neiY++){
-						costRight.at<SGM::VecDf>(y,x)[d] += fabs(derivativeStereoRight.at<float>(neiY, neiX)- 
-										    derivativeStereoLeft.at<float>(neiY, neiX + d)) 
-							+ CENSUS_W * computeHammingDist(censusImageRight.at<uchar>(neiY, neiX), censusImageLeft.at<uchar>(neiY, neiX + d));
-
-					}
-					
-				}
-			}
-
-		}
-	}
-
-
-
-}
-
 void SGMStereo::computeCost(){
+	bool dispInvalid;
+	float stereoAggrCost;
 	for(int y = winRadius; y < HEIGHT - winRadius; y++){
-		for(int x = DISP_RANGE+winRadius; x < WIDTH - winRadius; x++){
+		for(int x = winRadius; x < WIDTH - winRadius; x++){
+			dispInvalid = false;
 			for(int d = 0; d < DISP_RANGE; d++){
+				if(dispInvalid){
+					//save redundant computations: disparity(x) invalid => disparity(x') invalid for all x'>x
+					abortNeiIteration:
+					cost.at<SGM::VecDf>(y,x)[d] = stereoAggrCost;
+					continue;
+				}
+				//reset aggregating variables
+				stereoAggrCost = 0.0f;
+
 				for(int neiX = x - winRadius; neiX <= x + winRadius; neiX++){
 					for(int neiY = y - winRadius; neiY <= y + winRadius; neiY++){
-						cost.at<SGM::VecDf>(y,x)[d] += fabs(derivativeStereoLeft.at<float>(neiY, neiX)- 
-										    derivativeStereoRight.at<float>(neiY, neiX - d)) 
-							+ CENSUS_W * computeHammingDist(censusImageLeft.at<uchar>(neiY, neiX), 
-											censusImageRight.at<uchar>(neiY, neiX - d));
+						if(neiX-d >= winRadius){
+							stereoAggrCost += fabs(derivativeStereoLeft.at<float>(neiY, neiX)- 
+											    derivativeStereoRight.at<float>(neiY, neiX - d)) 
+								+ CENSUS_W * computeHammingDist(censusImageLeft.at<uchar>(neiY, neiX), 
+												censusImageRight.at<uchar>(neiY, neiX - d));
+						}
+						else{
+							dispInvalid = true;
+							stereoAggrCost = cost.at<SGM::VecDf>(y,x)[d-1];
+							goto abortNeiIteration;
+						}
 					}
 					
 				}
+				cost.at<SGM::VecDf>(y,x)[d] = stereoAggrCost;
 			}
 		}
 	}
@@ -722,8 +569,6 @@ SGMStereo::SGMStereo(const cv::Mat &imgLeftLast_, const cv::Mat &imgLeft_, const
 		:SGM(imgLeftLast_, imgLeft_, imgRight_, PENALTY1_, PENALTY2_, winRadius_){
 		derivativeStereoLeft = Mat::zeros(HEIGHT, WIDTH, CV_32FC1);
 		derivativeStereoRight = Mat::zeros(HEIGHT, WIDTH, CV_32FC1);
-		halfPixelRightMin = Mat::zeros(HEIGHT, WIDTH, CV_32FC1);
-		halfPixelRightMax = Mat::zeros(HEIGHT, WIDTH, CV_32FC1);
 	}
 
 SGMStereo::~SGMStereo(){
@@ -735,6 +580,7 @@ void SGMStereo::postProcess(cv::Mat &disparityIn, cv::Mat &disparity){
 	//denoising provided by OpenCV2
 	fastNlMeansDenoising(disparityIn, disparity);
 
+	/* NOT USED. BORDERS ARE RENDERED
 	//Set disparity to 0 for borders & where full stereo cost could not be computed
 	//left border (including stereo-blind area)
 	for(int y = 0; y < HEIGHT; y++){
@@ -759,7 +605,7 @@ void SGMStereo::postProcess(cv::Mat &disparityIn, cv::Mat &disparity){
 		for(int x = winRadius+DISP_RANGE; x < WIDTH-winRadius; x++){
 			disparity.at<uchar>(y,x) = static_cast<uchar>(0);
 		}
-	}
+	}*/
 }
 
 void SGMStereo::writeDerivative(){
@@ -831,7 +677,7 @@ SGMStereoFlow::~SGMStereoFlow(){
 }
 
 void _computeRotation(cv::Mat &imgRotation, cv::Mat &fundamentalMatrix, int WIDTH, int HEIGHT){
-
+	std::cout<<"Compute rotation: ";
 	const double cx = (double)WIDTH/2.0;
 	const double cy = (double)HEIGHT/2.0;
 	cv::Mat A(WIDTH*HEIGHT,5,CV_64FC1,cv::Scalar(0.0));
@@ -873,7 +719,7 @@ void _computeRotation(cv::Mat &imgRotation, cv::Mat &fundamentalMatrix, int WIDT
 	A.release();
 	b.release();	
 	x_sol.release();
-	std::cout<<"compute rotation: done"<<std::endl;
+	std::cout<<"done"<<std::endl;
 }
 
 void SGMFlow::computeRotation(){
@@ -886,9 +732,9 @@ void SGMStereoFlow::computeRotation(){
 
 void SGMStereoFlow::setAlphaRansac(cv::Mat &disparity, cv::Mat &disparityFlow, cv::Mat &disFlag_)
 {
-	//WHILE PCL BROKEN: set alpha(x,y) := 1
-	//ransacAlpha = cv::Vec3f(0.0,0.0,1.0);
+	std::cout<<"Compute alpha: ";
 	ransacAlpha = ransac(disparity,disparityFlow,disFlag_);
+	std::cout<<"done"<<std::endl;
 	std::cout<<"alpha="<<ransacAlpha<<std::endl;
 }
 
@@ -1112,9 +958,23 @@ void SGMStereoFlow::computeDerivative(){
 }
 
 void SGMFlow::computeCost(){
+	bool dispInvalid;
+	float flowAggrCost;
 	for(int y = winRadius; y < HEIGHT - winRadius; y++){
 		for(int x = winRadius; x < WIDTH - winRadius; x++){
+			dispInvalid = false;
 			for(int w = 0; w < DISP_RANGE ; w++){
+				if(dispInvalid){
+					//save redundant computations: disparity(x) invalid => disparity(x') invalid for all x'>x
+					abortNeiIteration:
+					cost.at<SGM::VecDf>(y,x)[w] = flowAggrCost;
+					continue;
+				}
+
+				flowAggrCost = 0.0f;
+				//convert w to VZ-ratio
+				float w_ = Vmax*(float)w/DISP_RANGE;
+
 				for(int neiY = y - winRadius ; neiY <= y + winRadius; neiY++){				
 					for(int neiX = x - winRadius; neiX <= x + winRadius; neiX++){
 						float newx = neiX+imgRotation.at<Vec2f>(neiY,neiX)[0];
@@ -1124,27 +984,32 @@ void SGMFlow::computeCost(){
 						
 
 						float L = sqrt(distx*distx + disty*disty);
-						float d = L * ((float)Vmax*(float)w/DISP_RANGE)/(1.0-((float)Vmax*(float)w/DISP_RANGE));
+						float d = L * w_/(1.0f-w_);
 						
 						
 						int xx = round(newx + d*translationLeft.at<Vec2f>(newy,newx)[0]);
 						int yy = round(newy + d*translationLeft.at<Vec2f>(newy,newx)[1]);
 
 						if((xx>=winRadius) && (yy>=winRadius) && xx<(WIDTH-winRadius) && yy< (HEIGHT-winRadius)){	
-							cost.at<SGM::VecDf>(y,x)[w] += fabs(derivativeFlowLeftLast.at<float>(neiY,neiX)
+							flowAggrCost += fabs(derivativeFlowLeftLast.at<float>(neiY,neiX)
 							  - derivativeFlowLeft.at<float>(yy,xx)) + (float)CENSUS_W
 							  * computeHammingDist(censusImageLeftLast.at<uchar>(neiY, neiX),
 							  censusImageLeft.at<uchar>(yy, xx));
 						}else{
+							dispInvalid = true;
 							disFlag.at<uchar>(y,x)=static_cast<uchar>(DISFLAG);
+							flowAggrCost = cost.at<SGM::VecDf>(y,x)[w - 1];
+							goto abortNeiIteration;
 						}
 					}
 				}
+				cost.at<SGM::VecDf>(y,x)[w] = flowAggrCost;
 			}
 		}
 	}
 
-	//Set non-full costs to zero (border valueas are 0 by default)
+	/* NOT USED. BORDERS ARE RENDERED
+	//Set non-full costs to zero (border values are 0 by default)
 	for(int y = winRadius; y < HEIGHT - winRadius; y++){
 		for(int x = winRadius; x < WIDTH - winRadius; x++){
 			if(disFlag.at<uchar>(y,x) == static_cast<uchar>(DISFLAG)){	
@@ -1153,13 +1018,14 @@ void SGMFlow::computeCost(){
 				}
 			}
 		}
-	}
+	}*/
 }
 
 void SGMFlow::postProcess(cv::Mat &disparityIn, cv::Mat &disparity){
 	//denoising provided by OpenCV2
 	fastNlMeansDenoising(disparityIn, disparity);
 
+	/* NOT USED. BORDERS ARE RENDERED
 	//Set disparity to 0 for borders & where full flow cost could not be computed
 	for(int y = 0; y < HEIGHT; y++){
 		for(int x = 0; x < WIDTH; x++){
@@ -1168,7 +1034,7 @@ void SGMFlow::postProcess(cv::Mat &disparityIn, cv::Mat &disparity){
 				disparity.at<uchar>(y,x) = static_cast<uchar>(0);
 			}
 		}
-	}
+	}*/
 }
 
 void SGMFlow::writeDerivative(){
@@ -1183,63 +1049,80 @@ void SGMFlow::copyDisflag(cv::Mat &M){
 
 }
 
-void SGMStereoFlow::computeCost(){	
+void SGMStereoFlow::computeCost(){
+	bool dispInvalid,stereoInvalid,flowInvalid;
+	float stereoLastCost,stereoAggrCost,flowLastCost,flowAggrCost;
 	for(int y = winRadius; y < HEIGHT - winRadius; y++){
 		for(int x = winRadius; x < WIDTH - winRadius; x++){
-			for(int d_st = 0; d_st < DISP_RANGE; d_st++){ //use disp. range from stereo
+			dispInvalid = stereoInvalid = flowInvalid = false;
+			stereoLastCost = flowLastCost = 0.0f;
+			for(int d_st = 0; d_st < DISP_RANGE; d_st++){
+				if(dispInvalid){
+					//save redundant computations: disparity(x) invalid => disparity(x') invalid for all x'>x
+					abortNeiIteration:
+					cost.at<SGM::VecDf>(y,x)[d_st] = stereoLastCost + flowLastCost;
+					continue;
+				}
+				//reset aggregating variables
+				stereoAggrCost = flowAggrCost = 0.0f;
+				//convert Stereo-disparity to VZ-ratio
 				float w = d_st*(x*ransacAlpha[0]+y*ransacAlpha[1]+ransacAlpha[2]);
-				w = (Vmax*w)/DISP_RANGE; //apply alpha and VMax to obtain VZ-ratio
+				w = (Vmax*w)/DISP_RANGE;
+
 				for(int neiY = y - winRadius ; neiY <= y + winRadius; neiY++){				
 					for(int neiX = x - winRadius; neiX <= x + winRadius; neiX++){
-						if(x-winRadius-d_st >= 0){//only add stereo cost, if it exists for all d_st
-							cost.at<SGM::VecDf>(y,x)[d_st] += fabs(derivativeStereoLeft.at<float>(neiY, neiX)- 
+						//check if stereo projection still in (census-)image
+						stereoInvalid = stereoInvalid || neiX-d_st < winRadius;
+						if(!stereoInvalid){
+							stereoAggrCost += fabs(derivativeStereoLeft.at<float>(neiY, neiX)- 
 								derivativeStereoRight.at<float>(neiY, neiX - d_st)) 
 								+ CENSUS_W * computeHammingDist(censusImageLeft.at<uchar>(neiY, neiX), 
 								censusImageRight.at<uchar>(neiY, neiX - d_st));
 						}
 
-						if(disFlag.at<uchar>(y,x) != static_cast<uchar>(DISFLAG)){//only add flow cost, if exists for all d_fl
+						int xx,yy;
+						if(!flowInvalid){
 							//apply image rotation
 							float newx = neiX+imgRotation.at<Vec2f>(neiY,neiX)[0];
 							float newy = neiY+imgRotation.at<Vec2f>(neiY,neiX)[1];
+
+							//compute Flow-disparity
 							float distx = newx - EpipoleLeft.at<float>(0);
 							float disty = newy - EpipoleLeft.at<float>(1);
-							
 							float L = sqrt(distx*distx + disty*disty);
 							float d_fl = L * w/(1.0-w);
 
 							//projected flow point
-							int xx = round(newx + d_fl*translationLeft.at<Vec2f>(newy,newx)[0]);
-							int yy = round(newy + d_fl*translationLeft.at<Vec2f>(newy,newx)[1]);
+							xx = round(newx + d_fl*translationLeft.at<Vec2f>(newy,newx)[0]);
+							yy = round(newy + d_fl*translationLeft.at<Vec2f>(newy,newx)[1]);
 
-
-							if((xx>=winRadius) && (yy>=winRadius) && xx<(WIDTH-winRadius) && yy< (HEIGHT-winRadius)){
-								cost.at<SGM::VecDf>(y,x)[d_st] += fabs(derivativeFlowLeftLast.at<float>(neiY,neiX)
-									- derivativeFlowLeft.at<float>(yy,xx))
-									+ (float)CENSUS_W * computeHammingDist(censusImageLeftLast.at<uchar>(neiY, neiX), 
-									censusImageLeft.at<uchar>(yy, xx));
-							}
-							else { cost.at<SGM::VecDf>(y,x)[d_st] += 10000; } //penalty if flow is (unexpectedly) invalid
+							//check if flow projection still in (census-)image
+							flowInvalid = (xx<winRadius)||(yy<winRadius)||(xx>=WIDTH-winRadius)||(yy>=HEIGHT-winRadius);
 						}
-					}//for(int neiX)
-				}//for(int neiY)
-			}//for(int d_st)
-		}//for(int x)
-	}//for(int y)
-
-	/* DEPRECATED (should be 0 by default)
-	//Set border values & non-full costs to zero
-	for(int y = winRadius; y < HEIGHT - winRadius; y++){
-		for(int x = winRadius; x < WIDTH - winRadius; x++){
-			if(x < winRadius || x >= WIDTH-winRadius || y < winRadius || y >= HEIGHT-winRadius
-				|| (x < winRadius+DISP_RANGE && disFlag.at<uchar>(y,x) == static_cast<uchar>(DISFLAG))){	
-				for(int w = 0; w < DISP_RANGE ; w++){
-					cost.at<SGM::VecDf>(y,x)[w] = 0.0;
+						if(!flowInvalid){
+							flowAggrCost += fabs(derivativeFlowLeftLast.at<float>(neiY,neiX)
+								- derivativeFlowLeft.at<float>(yy,xx))
+								+ (float)CENSUS_W * computeHammingDist(censusImageLeftLast.at<uchar>(neiY, neiX), 
+								censusImageLeft.at<uchar>(yy, xx));
+						}
+						else if(stereoInvalid){
+							//cost not computeable for current disparity, abort neighbour iteration
+							dispInvalid = true;
+							goto abortNeiIteration;
+						}
+					}
 				}
+				//enter aggregated cost into cost field
+				if(!stereoInvalid)
+					stereoLastCost = stereoAggrCost;
+				cost.at<SGM::VecDf>(y,x)[d_st] += stereoLastCost;
+
+				if(!flowInvalid)
+					flowLastCost = flowAggrCost;
+				cost.at<SGM::VecDf>(y,x)[d_st] += flowLastCost;
 			}
 		}
-	}*/
-
+	}
 }
 
 void SGMStereoFlow::postProcess(cv::Mat &disparityIn, cv::Mat &disparity)
@@ -1247,6 +1130,7 @@ void SGMStereoFlow::postProcess(cv::Mat &disparityIn, cv::Mat &disparity)
 	//denoising provided by OpenCV2
 	fastNlMeansDenoising(disparityIn, disparity);
 
+	/* NOT USED. BORDERS ARE RENDERED
 	//Set disparity to 0 for borders & where neither stereo nor flow cost could not be computed
 	for(int y = 0; y < HEIGHT; y++){
 		for(int x = 0; x < WIDTH; x++){
@@ -1255,5 +1139,5 @@ void SGMStereoFlow::postProcess(cv::Mat &disparityIn, cv::Mat &disparity)
 				disparity.at<uchar>(y,x) = static_cast<uchar>(0);
 			}
 		}
-	}
+	}*/
 }

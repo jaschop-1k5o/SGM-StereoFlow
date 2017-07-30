@@ -5,8 +5,13 @@
 #include "opencv2/xfeatures2d/nonfree.hpp"
 #include "opencv2/stitching/detail/matchers.hpp"
 #include <vector>
+//for automated filepath building:
 #include <string>
 #include <sstream>
+//for runtime analysis:
+#include <ctime>
+#include <iostream>
+#include <fstream>
 
 //-- macros: STEREO|FLOW|STEREOFLOW|DRAWEPIPOLES
 #define STEREO
@@ -16,6 +21,9 @@
 void computeEpipoles(std::vector<cv::Vec3f> &lines, cv::Mat &x_sol);
 
 int main(int argc, char *argv[]){
+
+/*RUNTIME ANALYSIS*/std::clock_t t0 = std::clock();/*RUNTIME ANALYSIS*/
+
 //-- set some default arguments for easy testing
 	//-- path to local KITTI directory
 	std::string kittiDir = "/home/johann/TUM/17S/Seminar-HWSWCodesign/KITTI";
@@ -62,6 +70,8 @@ int main(int argc, char *argv[]){
 		return -1;
 	}
 
+/*RUNTIME ANALYSIS*/std::clock_t t1 = std::clock();/*RUNTIME ANALYSIS*/
+
 #ifdef DRAWEPIPOLES
 //-- colors for image drawing
 	const Scalar colorBlue(225.0, 0.0, 0.0, 0.0);
@@ -80,10 +90,10 @@ int main(int argc, char *argv[]){
 	cv::Mat disparityStereo_(grayLeft.rows, grayLeft.cols, CV_8UC1);
 	SGMStereo sgmstereo(grayLeftLast, grayLeft, grayRight, PENALTY1, PENALTY2, winRadius);
 	sgmstereo.runSGM(disparityStereo_);
-	imwrite("../disparityStereo.jpg", disparityStereo_);
-	//imshow("disparityStereo_", disparityStereo_);
-	//sgmstereo.writeDerivative();
+	imwrite("../disparityStereo.png", disparityStereo_);
 #endif
+
+/*RUNTIME ANALYSIS*/std::clock_t t2 = std::clock();/*RUNTIME ANALYSIS*/
 
 #if defined FLOW || defined STEREOFLOW
 //-- precomputation for flow analysis
@@ -176,9 +186,11 @@ int main(int argc, char *argv[]){
 		cv::circle(imageLeftLast, new_keypoints_1[i],10,colorRed,1);
 		cv::circle(imageLeft, new_keypoints_2[i],10,colorBlue,1);	
 	}
-	imwrite("../imageLeftLast_epipoles.jpg",imageLeftLast);
+	imwrite("../imageLeftLast_epipoles.png",imageLeftLast);
 #endif
 #endif
+
+/*RUNTIME ANALYSIS*/std::clock_t t3 = std::clock();/*RUNTIME ANALYSIS*/
 
 #ifdef FLOW
 //-- Compute the flow disparity
@@ -186,13 +198,13 @@ int main(int argc, char *argv[]){
 	cv::Mat disparityFlow_(grayLeft.rows, grayLeft.cols, CV_8UC1);
 	SGMFlow sgmflow(grayLeftLast, grayLeft, grayRight, PENALTY1, PENALTY2, winRadius, Epipole_1, Epipole_2, Fmat);
 	sgmflow.runSGM(disparityFlow_);
-	//imshow("disparityFlow_",disparityFlow_);
 	cv::Mat disFlowFlag_;
 	sgmflow.copyDisflag(disFlowFlag_);
-	imwrite("../disparityFlow.jpg", disparityFlow_);
-	imwrite("../disFlowFlag.jpg", disFlowFlag_);
-	//sgmflow.writeDerivative();
+	imwrite("../disparityFlow.png", disparityFlow_);
+	imwrite("../disFlowFlag.png", disFlowFlag_);
 #endif
+
+/*RUNTIME ANALYSIS*/std::clock_t t4 = std::clock();/*RUNTIME ANALYSIS*/
 
 #ifdef STEREOFLOW
 //-- Compute the stereoflow disparity
@@ -201,14 +213,14 @@ int main(int argc, char *argv[]){
 #ifdef STEREO
 	disparityStereo = disparityStereo_;
 #else
-	disparityStereo=cv::imread("../input/disparityStereo.jpg",CV_LOAD_IMAGE_GRAYSCALE );
+	disparityStereo=cv::imread("../input/disparityStereo.png",CV_LOAD_IMAGE_GRAYSCALE );
 #endif
 #ifdef FLOW
 	disparityFlow = disparityFlow_;
 	disFlowFlag = disFlowFlag_;
 #else
-	disparityFlow=cv::imread("../input/disparityFlow.jpg",CV_LOAD_IMAGE_GRAYSCALE );
-	disFlowFlag=cv::imread("../input/disFlowFlag.jpg",CV_LOAD_IMAGE_GRAYSCALE );	
+	disparityFlow=cv::imread("../input/disparityFlow.png",CV_LOAD_IMAGE_GRAYSCALE );
+	disFlowFlag=cv::imread("../input/disFlowFlag.png",CV_LOAD_IMAGE_GRAYSCALE );	
 #endif
 	std::cout<<std::endl<<"COMPUTING STEREO-FLOW DISPARITY"<<std::endl;
 	SGMStereoFlow sgmsf(grayLeftLast, grayLeft, grayRight, PENALTY1, PENALTY2, winRadius, Epipole_1, Epipole_2, Fmat);
@@ -219,14 +231,38 @@ int main(int argc, char *argv[]){
 	cv::Mat disparityStereoFlow(grayLeft.rows, grayLeft.cols, CV_8UC1);
 	sgmsf.runSGM(disparityStereoFlow);
 
-	
-	//imshow("disparityStereoFlow",disparityStereoFlow);
-	imwrite("../disparityStereoFlow.jpg",disparityStereoFlow);
+	//convert to 16Bit format (required by KITTI Benchmark)
+	cv::Mat disparity_formatted(grayLeft.rows, grayLeft.cols, CV_16UC1);
+	disparityStereoFlow.convertTo(disparity_formatted, CV_16U, 255);
+	imwrite("../disparityStereoFlow.png",disparity_formatted);
 #endif
-	waitKey(0);
-	
-	return 0;
 
+/*RUNTIME ANALYSIS*/std::clock_t t5 = std::clock();/*RUNTIME ANALYSIS*/
+
+	std::ofstream timers;
+	timers.open("../timers.txt");
+
+	double duration = double(t1 - t0)/CLOCKS_PER_SEC;
+	timers<<"[loading   ]"<<duration<<std::endl;
+
+	duration = double(t2 - t1)/CLOCKS_PER_SEC;
+	timers<<"[stereo    ]"<<duration<<std::endl;
+
+	duration = double(t3 - t2)/CLOCKS_PER_SEC;
+	timers<<"[epipoles  ]"<<duration<<std::endl;
+
+	duration = double(t4 - t3)/CLOCKS_PER_SEC;
+	timers<<"[flow      ]"<<duration<<std::endl;
+
+	duration = double(t5 - t4)/CLOCKS_PER_SEC;
+	timers<<"[stereoflow]"<<duration<<std::endl;
+
+	duration = double(t5 - t1)/CLOCKS_PER_SEC;
+	timers<<"[comp.total]"<<duration<<std::endl;
+
+	timers.close();
+
+	return 0;
 }
 
 

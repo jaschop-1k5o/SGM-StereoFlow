@@ -14,6 +14,9 @@ SET(PCL_DIR "/home/johann/TUM/17S/Seminar-HWSWCodesign/PCLLocal/lib/share/pcl-1.
 find_package( PCL REQUIRED )
 find_package( OpenCV REQUIRED )
 
+file(GLOB PNG_LIBS "/home/johann/TUM/17S/Seminar-HWSWCodesign/png-library/libpng-1.6.29/build/libpng16.so")
+set (PNG_LINK_LIBS ${PNG_LIBS})
+
 message("-- OpenCVConfig.cmake :${OpenCV_CONFIG}")
 message("-- OpenCV_INCLUDE_DIRS :${OpenCV_INCLUDE_DIRS}")
 message("-- OpenCV_LIBS_PATH :${OpenCV_LIBS_PATH}")
@@ -31,4 +34,5 @@ SET(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -pg")
 
 add_executable( sgm_stereoflow sgm_stereoflow.cpp SGM.cpp )
 target_link_libraries( sgm_stereoflow ${OpenCV_LIBS})
-target_link_libraries( sgm_stereoflow ${PCL_SAMPLE_CONSENSUS_LIBRARIES} )
+target_link_libraries( sgm_stereoflow ${PCL_SAMPLE_CONSENSUS_LIBRARIES})
+target_link_libraries( sgm_stereoflow ${PNG_LINK_LIBS} )

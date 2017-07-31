@@ -31,3 +31,21 @@ Pass ID of KITTI image (i.e. 000045) as parameter.
 -disFlowFlag.png (indicates area, where Flow-disparity could be evaluated fully)
 
 -disparityStereoFlow.png
+
+# My contributions:
+
+-SGM.cpp: implementation of class SGMStereoFlow
+
+-SGM.cpp: modified all 'computeCost()' functions for consistency & better runtime
+
+-SGM.cpp: made 'postProcess()' functions consistent
+
+-sgm_stereoflow.cpp: restructured main() to run entire StereoFlow computation in one go
+
+-sgm_stereoflow.cpp: extended image loading for convenience
+
+-sgm_stereoflow.cpp: introduced compiler Flags for easy configurability
+
+-NOT by me(sgm_stereoflow.cpp): epipole computation
+
+-NOT by me(SGM.cpp): classes SGM, SGMStereo & SGMFlow

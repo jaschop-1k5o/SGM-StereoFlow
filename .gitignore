@@ -33,6 +33,7 @@
 
 # Output files
 *.jpg
+outputs/*
 
 # build folder
 build/*

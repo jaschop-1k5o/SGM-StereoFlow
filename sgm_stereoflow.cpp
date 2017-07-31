@@ -90,7 +90,9 @@ int main(int argc, char *argv[]){
 	cv::Mat disparityStereo_(grayLeft.rows, grayLeft.cols, CV_8UC1);
 	SGMStereo sgmstereo(grayLeftLast, grayLeft, grayRight, PENALTY1, PENALTY2, winRadius);
 	sgmstereo.runSGM(disparityStereo_);
-	imwrite("../disparityStereo.png", disparityStereo_);
+	cv::Mat stereo_formatted(grayLeft.rows, grayLeft.cols, CV_16UC1);
+	disparityStereo_.convertTo(stereo_formatted, CV_16U, 255);
+	imwrite("../disparityStereo.png", stereo_formatted);
 #endif
 
 /*RUNTIME ANALYSIS*/std::clock_t t2 = std::clock();/*RUNTIME ANALYSIS*/
